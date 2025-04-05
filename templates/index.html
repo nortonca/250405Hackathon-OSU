@@ -137,8 +137,8 @@
                             .then(response => response.json())
                             .then(data => {
                                 console.log("Transcription received:", data);
+                                // Don't add transcript here, let the socket event handle it
                                 if (data.text) {
-                                    addTranscript(data.text);
                                     updateStatus('Ready to detect voice');
                                 } else {
                                     updateStatus('Transcription failed', true);
