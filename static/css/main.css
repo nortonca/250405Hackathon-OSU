@@ -1,0 +1,38 @@
+/* Custom styles beyond Tailwind CSS */
+
+/* Message styling */
+.message {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    max-width: 80%;
+}
+
+.message-received {
+    background-color: #e9e9eb;
+    align-self: flex-start;
+}
+
+.message-sent {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+    margin-left: auto;
+}
+
+/* Custom scrollbar */
+#message-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#message-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#message-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+#message-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+} 
