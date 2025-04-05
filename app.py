@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import os
@@ -13,8 +14,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 @app.route('/')
 def index():
     return render_template('index.html')
-
-# Transcribe page route removed as functionality is now in index.html
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
@@ -37,7 +36,7 @@ def transcribe():
         # Broadcast the result to all connected clients
         socketio.emit('transcription_result', {'text': transcript})
         
-        return jsonify({'text': transcript}), 200
+        return jsonify({'success': True}), 200
     except Exception as e:
         print(f"Transcription error: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -49,16 +48,10 @@ def transcribe():
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
-    emit('response', {'data': 'Connected'})
-
-@socketio.on('message')
-def handle_message(data):
-    print('received message: ' + str(data))
-    emit('response', {'data': f'Server received: {data}'}, broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print('Client disconnected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000) 
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

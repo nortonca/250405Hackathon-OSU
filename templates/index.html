@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flask + Tailwind + SocketIO</title>
+    <title>Voice Transcription</title>
     <!-- Tailwind CSS from CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Socket.IO from CDN -->
@@ -12,36 +11,18 @@
     <!-- VAD (Voice Activity Detection) scripts -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8">
-            <h1 class="text-3xl font-bold text-center text-blue-600">Flask + Tailwind + SocketIO Demo</h1>
-            <div class="flex justify-center mt-4">
-                <button id="chat-tab-btn" class="px-4 py-2 bg-blue-500 text-white rounded-l">Chat</button>
-                <button id="voice-tab-btn" class="px-4 py-2 bg-gray-300 rounded-r">Voice Transcription</button>
-            </div>
+            <h1 class="text-3xl font-bold text-center text-blue-600">Real-time Voice Transcription</h1>
         </header>
-        
-        <!-- Chat Interface -->
-        <main id="chat-interface" class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
-            <div id="message-container" class="mb-6 h-64 overflow-y-auto border border-gray-200 rounded p-4">
-                <div class="text-gray-500 text-center">Messages will appear here</div>
-            </div>
-            
-            <div class="flex">
-                <input type="text" id="message-input" class="flex-1 border border-gray-300 rounded-l px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message...">
-                <button id="send-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r transition">Send</button>
-            </div>
-        </main>
 
-        <!-- Voice Transcription Interface -->
-        <main id="voice-interface" class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto hidden">
+        <main class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
             <div id="status" class="mb-4 p-3 bg-gray-100 rounded-lg text-center">
                 Ready to detect voice
             </div>
-            
+
             <div class="flex flex-col space-y-4">
                 <button id="start-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">
                     Start Listening
@@ -50,51 +31,39 @@
                     Stop Listening
                 </button>
             </div>
-            
+
             <div id="transcript-container" class="mt-6 h-64 overflow-y-auto border border-gray-200 rounded p-4">
                 <div class="text-gray-500 text-center">Transcriptions will appear here</div>
             </div>
         </main>
 
         <footer class="mt-8 text-center text-gray-500 text-sm">
-            <p>© 2025 - Flask + Tailwind + SocketIO Template</p>
+            <p>© 2025 - Voice Transcription App</p>
         </footer>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Tab switching logic
-            const chatTabBtn = document.getElementById('chat-tab-btn');
-            const voiceTabBtn = document.getElementById('voice-tab-btn');
-            const chatInterface = document.getElementById('chat-interface');
-            const voiceInterface = document.getElementById('voice-interface');
-
-            chatTabBtn.addEventListener('click', () => {
-                chatInterface.classList.remove('hidden');
-                voiceInterface.classList.add('hidden');
-                chatTabBtn.classList.replace('bg-gray-300', 'bg-blue-500');
-                chatTabBtn.classList.replace('text-gray-700', 'text-white');
-                voiceTabBtn.classList.replace('bg-blue-500', 'bg-gray-300');
-                voiceTabBtn.classList.replace('text-white', 'text-gray-700');
-            });
-
-            voiceTabBtn.addEventListener('click', () => {
-                chatInterface.classList.add('hidden');
-                voiceInterface.classList.remove('hidden');
-                chatTabBtn.classList.replace('bg-blue-500', 'bg-gray-300');
-                chatTabBtn.classList.replace('text-white', 'text-gray-700');
-                voiceTabBtn.classList.replace('bg-gray-300', 'bg-blue-500');
-                voiceTabBtn.classList.replace('text-gray-700', 'text-white');
-            });
-
-            // Voice Transcription Logic
+            // Socket.IO for real-time communication
             const socket = io();
             const startButton = document.getElementById('start-button');
             const stopButton = document.getElementById('stop-button');
             const statusDiv = document.getElementById('status');
             const transcriptContainer = document.getElementById('transcript-container');
             let vadInstance = null;
+            let audioChunks = [];
+            let isRecording = false;
+
+            // Handle connection events
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+
+            socket.on('transcription_result', (data) => {
+                if (data.text) {
+                    addTranscript(data.text);
+                }
+            });
 
             function updateStatus(message, isError = false) {
                 statusDiv.textContent = message;
@@ -106,7 +75,7 @@
                 if (transcriptContainer.querySelector('.text-gray-500')) {
                     transcriptContainer.innerHTML = '';
                 }
-                
+
                 const transcriptDiv = document.createElement('div');
                 transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded';
                 transcriptDiv.textContent = text;
@@ -116,38 +85,40 @@
 
             async function initVAD() {
                 try {
+                    // Set up VAD with optimized settings for faster response
                     vadInstance = await vad.MicVAD.new({
                         onSpeechStart: () => {
                             updateStatus('Speech detected! Recording...');
                             console.log("Speech start detected");
+                            isRecording = true;
                         },
                         onSpeechEnd: async (audio) => {
                             updateStatus('Processing speech...');
                             console.log("Speech ended, sending for transcription");
-                            
+                            isRecording = false;
+
                             // Convert Float32Array to WAV and send to server
                             const wavBlob = await float32ArrayToWav(audio);
                             const formData = new FormData();
                             formData.append('audio', wavBlob, 'speech.wav');
-                            
-                            fetch('/transcribe', {
-                                method: 'POST',
-                                body: formData
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                console.log("Transcription received:", data);
-                                // Don't add transcript here, let the socket event handle it
-                                if (data.text) {
+
+                            // Optimized for faster sending - use XMLHttpRequest for potential performance benefits
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('POST', '/transcribe', true);
+                            xhr.onload = function() {
+                                if (xhr.status === 200) {
+                                    console.log("Audio sent successfully");
                                     updateStatus('Ready to detect voice');
                                 } else {
-                                    updateStatus('Transcription failed', true);
+                                    console.error("Error sending audio:", xhr.statusText);
+                                    updateStatus('Error sending audio', true);
                                 }
-                            })
-                            .catch(error => {
-                                console.error("Error sending audio:", error);
+                            };
+                            xhr.onerror = function() {
+                                console.error("Request failed");
                                 updateStatus('Error sending audio', true);
-                            });
+                            };
+                            xhr.send(formData);
                         }
                     });
                     return true;
@@ -164,7 +135,7 @@
                 const sampleRate = 16000;
                 const numChannels = 1;
                 const bitsPerSample = 16;
-                
+
                 // Convert Float32Array to Int16Array
                 const int16Array = new Int16Array(audio.length);
                 for (let i = 0; i < audio.length; i++) {
@@ -172,16 +143,16 @@
                     const s = Math.max(-1, Math.min(1, audio[i]));
                     int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
-                
+
                 // Create the WAV file
                 const buffer = new ArrayBuffer(44 + int16Array.length * 2);
                 const view = new DataView(buffer);
-                
+
                 // RIFF header
                 writeString(view, 0, 'RIFF');
                 view.setUint32(4, 36 + int16Array.length * 2, true);
                 writeString(view, 8, 'WAVE');
-                
+
                 // fmt chunk
                 writeString(view, 12, 'fmt ');
                 view.setUint32(16, 16, true);
@@ -191,20 +162,20 @@
                 view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true);
                 view.setUint16(32, numChannels * bitsPerSample / 8, true);
                 view.setUint16(34, bitsPerSample, true);
-                
+
                 // data chunk
                 writeString(view, 36, 'data');
                 view.setUint32(40, int16Array.length * 2, true);
-                
+
                 // Write the PCM samples
                 const offset = 44;
                 for (let i = 0; i < int16Array.length; i++) {
                     view.setInt16(offset + i * 2, int16Array[i], true);
                 }
-                
+
                 return new Blob([buffer], { type: 'audio/wav' });
             }
-            
+
             function writeString(view, offset, string) {
                 for (let i = 0; i < string.length; i++) {
                     view.setUint8(offset + i, string.charCodeAt(i));
@@ -215,7 +186,7 @@
                 startButton.classList.add('hidden');
                 stopButton.classList.remove('hidden');
                 updateStatus('Initializing voice detection...');
-                
+
                 if (await initVAD()) {
                     vadInstance.start();
                     updateStatus('Listening for speech...');
@@ -224,7 +195,7 @@
                     stopButton.classList.add('hidden');
                 }
             });
-            
+
             stopButton.addEventListener('click', () => {
                 if (vadInstance) {
                     vadInstance.destroy();
@@ -233,17 +204,6 @@
                 stopButton.classList.add('hidden');
                 startButton.classList.remove('hidden');
                 updateStatus('Voice detection stopped');
-            });
-            
-            // Handle socket events
-            socket.on('connect', () => {
-                console.log('Connected to server');
-            });
-            
-            socket.on('transcription_result', (data) => {
-                if (data.text) {
-                    addTranscript(data.text);
-                }
             });
         });
     </script>
