@@ -14,9 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def index():
     return render_template('index.html')
 
-@app.route('/transcribe-page')
-def transcribe_page():
-    return render_template('transcribe.html')
+# Transcribe page route removed as functionality is now in index.html
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
