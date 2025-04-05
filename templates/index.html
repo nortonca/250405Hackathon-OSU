@@ -227,7 +227,7 @@
             
             stopButton.addEventListener('click', () => {
                 if (vadInstance) {
-                    vadInstance.stop();
+                    vadInstance.destroy();
                     vadInstance = null;
                 }
                 stopButton.classList.add('hidden');
