@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Detection and Transcription</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-600">Voice Detection & Transcription</h1>
+        </header>
+        
+        <main class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
+            <div id="status" class="mb-4 p-3 bg-gray-100 rounded-lg text-center">
+                Ready to detect voice
+            </div>
+            
+            <div class="flex flex-col space-y-4">
+                <button id="start-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">
+                    Start Listening
+                </button>
+                <button id="stop-button" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition hidden">
+                    Stop Listening
+                </button>
+            </div>
+            
+            <div id="transcript-container" class="mt-6 h-64 overflow-y-auto border border-gray-200 rounded p-4">
+                <div class="text-gray-500 text-center">Transcriptions will appear here</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const statusDiv = document.getElementById('status');
+            const transcriptContainer = document.getElementById('transcript-container');
+            let vadInstance = null;
+
+            function updateStatus(message, isError = false) {
+                statusDiv.textContent = message;
+                statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
+            }
+
+            function addTranscript(text) {
+                // Clear the placeholder if it's the first transcript
+                if (transcriptContainer.querySelector('.text-gray-500')) {
+                    transcriptContainer.innerHTML = '';
+                }
+                
+                const transcriptDiv = document.createElement('div');
+                transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded';
+                transcriptDiv.textContent = text;
+                transcriptContainer.appendChild(transcriptDiv);
+                transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+            }
+
+            async function initVAD() {
+                try {
+                    vadInstance = await vad.MicVAD.new({
+                        onSpeechStart: () => {
+                            updateStatus('Speech detected! Recording...');
+                            console.log("Speech start detected");
+                        },
+                        onSpeechEnd: async (audio) => {
+                            updateStatus('Processing speech...');
+                            console.log("Speech ended, sending for transcription");
+                            
+                            // Convert Float32Array to WAV and send to server
+                            const wavBlob = await float32ArrayToWav(audio);
+                            const formData = new FormData();
+                            formData.append('audio', wavBlob, 'speech.wav');
+                            
+                            fetch('/transcribe', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log("Transcription received:", data);
+                                if (data.text) {
+                                    addTranscript(data.text);
+                                    updateStatus('Ready to detect voice');
+                                } else {
+                                    updateStatus('Transcription failed', true);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Error sending audio:", error);
+                                updateStatus('Error sending audio', true);
+                            });
+                        }
+                    });
+                    return true;
+                } catch (error) {
+                    console.error("Error initializing VAD:", error);
+                    updateStatus('Error initializing voice detection', true);
+                    return false;
+                }
+            }
+
+            // Function to convert Float32Array to WAV format
+            function float32ArrayToWav(audio) {
+                // The VAD outputs audio at 16kHz
+                const sampleRate = 16000;
+                const numChannels = 1;
+                const bitsPerSample = 16;
+                
+                // Convert Float32Array to Int16Array
+                const int16Array = new Int16Array(audio.length);
+                for (let i = 0; i < audio.length; i++) {
+                    // Convert float to int16
+                    const s = Math.max(-1, Math.min(1, audio[i]));
+                    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                
+                // Create the WAV file
+                const buffer = new ArrayBuffer(44 + int16Array.length * 2);
+                const view = new DataView(buffer);
+                
+                // RIFF header
+                writeString(view, 0, 'RIFF');
+                view.setUint32(4, 36 + int16Array.length * 2, true);
+                writeString(view, 8, 'WAVE');
+                
+                // fmt chunk
+                writeString(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true); // PCM format
+                view.setUint16(22, numChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true);
+                view.setUint16(32, numChannels * bitsPerSample / 8, true);
+                view.setUint16(34, bitsPerSample, true);
+                
+                // data chunk
+                writeString(view, 36, 'data');
+                view.setUint32(40, int16Array.length * 2, true);
+                
+                // Write the PCM samples
+                const offset = 44;
+                for (let i = 0; i < int16Array.length; i++) {
+                    view.setInt16(offset + i * 2, int16Array[i], true);
+                }
+                
+                return new Blob([buffer], { type: 'audio/wav' });
+            }
+            
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            startButton.addEventListener('click', async () => {
+                startButton.classList.add('hidden');
+                stopButton.classList.remove('hidden');
+                updateStatus('Initializing voice detection...');
+                
+                if (await initVAD()) {
+                    vadInstance.start();
+                    updateStatus('Listening for speech...');
+                } else {
+                    startButton.classList.remove('hidden');
+                    stopButton.classList.add('hidden');
+                }
+            });
+            
+            stopButton.addEventListener('click', () => {
+                if (vadInstance) {
+                    vadInstance.stop();
+                    vadInstance = null;
+                }
+                stopButton.classList.add('hidden');
+                startButton.classList.remove('hidden');
+                updateStatus('Voice detection stopped');
+            });
+            
+            // Handle socket events if needed
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+            
+            socket.on('transcription_result', (data) => {
+                if (data.text) {
+                    addTranscript(data.text);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

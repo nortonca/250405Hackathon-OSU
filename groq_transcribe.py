@@ -15,7 +15,7 @@ def transcribe_audio(file_path):
             file=audio_file,
             model="whisper-large-v3"
         )
-        print(response.text)
+        return response.text
 
 if __name__ == "__main__":
     audio_path = "example_audio.wav"  # replace with actual audio file
