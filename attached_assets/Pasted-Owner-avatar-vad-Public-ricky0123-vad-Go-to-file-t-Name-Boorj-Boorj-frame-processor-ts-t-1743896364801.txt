@@ -1,0 +1,129 @@
+Owner avatar
+vad
+Public
+ricky0123/vad
+Go to file
+t
+Name		
+Boorj
+Boorj
+frame-processor.ts: tiny refactoring (#187)
+aef5853
+ · 
+2 months ago
+.github
+Docs, examples, etc (#162)
+5 months ago
+changelogs
+Refactor and minor fixes (#181)
+3 months ago
+docs
+Update API doc (#182)
+3 months ago
+examples
+update and fix docs (#177)
+3 months ago
+packages
+frame-processor.ts: tiny refactoring (#187)
+2 months ago
+scripts
+New test site (#148)
+6 months ago
+test-site
+Refactor and minor fixes (#181)
+3 months ago
+.gitignore
+add action for docs deployment, poetry, etc
+6 months ago
+.prettierignore
+restructure into monorepo
+2 years ago
+.prettierrc
+Next version (#146)
+6 months ago
+HACKING.md
+Docs, examples, etc (#162)
+5 months ago
+LICENSE
+init
+3 years ago
+README.md
+update versions
+4 months ago
+check_vad_up_to_date.sh
+upgrade silero vad
+3 years ago
+mkdocs.yml
+Update API doc (#182)
+3 months ago
+package-lock.json
+update versions
+4 months ago
+package.json
+Next version (#146)
+6 months ago
+poetry.lock
+add action for docs deployment, poetry, etc
+6 months ago
+pyproject.toml
+Support Silero V5 (#154)
+5 months ago
+silero_vad_legacy.onnx
+Support Silero V5 (#154)
+5 months ago
+silero_vad_v5.onnx
+Support Silero V5 (#154)
+5 months ago
+tsconfig.json
+revert to old bundling strategy but with asset path fix
+2 years ago
+Repository files navigation
+README
+License
+Voice Activity Detection for Javascript
+npm vad-web npm vad-react
+
+Run callbacks on segments of audio with user speech in a few lines of code
+
+This package aims to provide an accurate, user-friendly voice activity detector (VAD) that runs in the browser. By using this package, you can prompt the user for microphone permissions, start recording audio, send segments of audio with speech to your server for processing, or show a certain animation or indicator when the user is speaking. Note that I have decided discontinue node support in order to focus on the browser use case.
+
+See a live demo
+Join us on Discord!
+Browse the documentation, the source code of which is located in the ./docs directory
+If you would like to contribute, I have started writing some documentation on how to get started hacking on these packages here. If you have any questions, you can open an issue here or leave a message on Discord.
+Please fill out this survey to let me know what you are building with these packages and how you are using them!
+Under the hood, these packages run Silero VAD [1] using ONNX Runtime Web / ONNX Runtime Node.js. Thanks a lot to those folks for making this possible.
+
+Sponsorship
+Please contribute to the project financially - especially if your commercial product relies on this package. Become a Sponsor
+
+Important update about node support - Oct 2024
+I am going to wind down support for ricky0123/vad-node, the voice activity detection package for server-side node environments. I do not plan to publish any updates to the node package from here on out. I made this decision for the following reasons:
+
+My original use case for this project was client-side voice activity detection. I added node support because someone requested it and I wanted to be helpful. However, I don't have a lot of time to work on this project, and deprecating ricky0123/vad-node will give me more time to focus on ricky0123/vad-web.
+It is much easier for individual developers to create custom server-side voice activity detection solutions than it is for developers to learn how to work with onnxruntime-web, audio worklets, and other technologies to produce a client-side solution. Therefore, I see ricky0123/vad-web as providing more value to the community.
+Sharing code between the browser and node packages is fairly awkward because the environments are different in ways that are relevant to running and using the voice activity detection model.
+Most users, according to the survey, are using ricky0123/vad-web (possibly with ricky0123/vad-react).
+Quick Start
+To use the VAD via a script tag in the browser, include the following script tags:
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+<script>
+  async function main() {
+    const myvad = await vad.MicVAD.new({
+      onSpeechStart: () => {
+        console.log("Speech start detected")
+      },
+      onSpeechEnd: (audio) => {
+        // do something with `audio` (Float32Array of audio samples at sample rate 16000)...
+      }
+    })
+    myvad.start()
+  }
+  main()
+</script>
+Documentation for bundling the voice activity detector for the browser or using it in node or React projects can be found on vad.ricky0123.com.
+
+References
+[1] Silero Team. (2021). Silero VAD: pre-trained enterprise-grade Voice Activity Detector (VAD), Number Detector and Language Classifier. GitHub, GitHub repository, https://github.com/snakers4/silero-vad, hello@silero.ai.
