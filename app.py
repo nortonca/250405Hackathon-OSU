@@ -53,7 +53,42 @@ def transcribe():
         if has_image and 'image_data' in request.form:
             # Vision model path with client-provided image
             image_data = request.form.get('image_data')
-            ai_response = get_vision_response(transcript, image_data)
+            
+            # Create image history from conversation history
+            image_history = []
+            
+            # Process conversation history to extract image messages
+            for msg in conversation_history:
+                # Skip system messages for vision model
+                if msg.get('role') == 'system':
+                    continue
+                
+                # For user messages that might contain images
+                if msg.get('role') == 'user' and msg.get('has_image', False):
+                    # Create a proper content structure for vision API
+                    content = [{"type": "text", "text": msg.get('content', '')}]
+                    
+                    # Add image if available
+                    if msg.get('image_data'):
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{msg.get('image_data').split(',', 1)[1] if ',' in msg.get('image_data', '') else msg.get('image_data', '')}"
+                            }
+                        })
+                    
+                    # Add to image history
+                    image_history.append({
+                        "role": "user",
+                        "content": content
+                    })
+                
+                # For assistant responses
+                elif msg.get('role') == 'assistant':
+                    image_history.append(msg)
+            
+            # Get response using vision model with image history
+            ai_response = get_vision_response(transcript, image_data, image_history)
         else:
             # Regular text-only conversation with Llama and client-provided history
             ai_response = get_llama_response(transcript, conversation_history)

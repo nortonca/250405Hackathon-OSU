@@ -207,11 +207,26 @@
 
                                 // Update local conversation history with the new exchange
                                 if (result.transcript) {
-                                    // Add user message
-                                    conversationHistory.push({
+                                    // Get current image data if available
+                                    let currentImageData = null;
+                                    const currentImageKey = localStorage.getItem('current-image-key');
+                                    if (currentImageKey) {
+                                        currentImageData = localStorage.getItem(currentImageKey);
+                                    }
+                                    
+                                    // Add user message with image data if available
+                                    const userMessage = {
                                         "role": "user",
                                         "content": result.transcript
-                                    });
+                                    };
+                                    
+                                    // If there's an image, store it with the message
+                                    if (currentImageData) {
+                                        userMessage.has_image = true;
+                                        userMessage.image_data = currentImageData;
+                                    }
+                                    
+                                    conversationHistory.push(userMessage);
 
                                     // Add assistant response
                                     if (result.response) {

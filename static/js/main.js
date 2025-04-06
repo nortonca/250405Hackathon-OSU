@@ -143,14 +143,29 @@ const AudioProcessor = {
         }
         
         // Add image if available
+        let hasImage = false;
         if (imageData) {
+            hasImage = true;
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
         }
         
         // Add conversation history if available
         if (conversationHistory && conversationHistory.length > 0) {
-            formData.append('conversation_history', JSON.stringify(conversationHistory));
+            // Ensure image data is properly included in the conversation history
+            const processedHistory = conversationHistory.map(msg => {
+                // Create a copy to avoid modifying the original
+                const msgCopy = {...msg};
+                
+                // For user messages that had images, add the image flag and data
+                if (msgCopy.role === 'user' && msgCopy.hasOwnProperty('image_data')) {
+                    msgCopy.has_image = true;
+                }
+                
+                return msgCopy;
+            });
+            
+            formData.append('conversation_history', JSON.stringify(processedHistory));
         }
         
         // Send to server
