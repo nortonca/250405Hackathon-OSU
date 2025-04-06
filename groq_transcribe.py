@@ -13,7 +13,7 @@ def transcribe_audio(file_path):
     with open(file_path, "rb") as audio_file:
         response = client.audio.transcriptions.create(
             file=audio_file,
-            model="whisper-large-v3"
+            model="distil-whisper-large-v3-en"
         )
         return response.text
 
