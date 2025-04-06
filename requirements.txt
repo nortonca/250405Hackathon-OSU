@@ -6,7 +6,5 @@ gunicorn==21.2.0
 groq
 flask-wtf
 uuid
-flask-socketio
-groq
-python-dotenv
 Pillow==10.0.0
+requests

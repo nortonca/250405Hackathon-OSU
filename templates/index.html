@@ -1,395 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Transcription</title>
-    <!-- Tailwind CSS from CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Socket.IO from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
-    <!-- VAD (Voice Activity Detection) scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VAD Debug + Transcription</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-center text-blue-600">Voice AI Assistant</h1>
-            <p class="text-center text-gray-600 mt-2">Speak to interact with the AI assistant in real-time</p>
-        </header>
-
-        <main class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
-            <div id="status" class="mb-4 p-3 bg-gray-100 rounded-lg text-center">
-                Ready to detect voice
-            </div>
-
-            <div class="flex flex-col space-y-4">
-                <button id="start-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">
-                    Start Listening
-                </button>
-                <button id="stop-button" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition hidden">
-                    Stop Listening
-                </button>
-                
-                <!-- Image upload section -->
-                <div class="mt-4 p-4 border border-gray-200 rounded-lg">
-                    <h3 class="text-lg font-medium mb-2">Upload an Image</h3>
-                    <p class="text-sm text-gray-500 mb-3">Upload an image for the AI to analyze</p>
-                    
-                    <div class="flex items-center justify-center w-full">
-                        <label for="image-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                <svg class="w-8 h-8 mb-3 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                                </svg>
-                                <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                                <p class="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 10MB)</p>
-                            </div>
-                            <input id="image-upload" type="file" accept="image/*" class="hidden" />
-                        </label>
-                    </div>
-                    
-                    <div id="image-preview-container" class="mt-4 hidden">
-                        <p class="text-sm font-medium mb-2">Preview:</p>
-                        <div class="relative">
-                            <img id="image-preview" src="#" alt="Preview" class="max-h-64 rounded-lg mx-auto object-contain" />
-                            <button id="remove-image" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="transcript-container" class="mt-6 h-64 overflow-y-auto border border-gray-200 rounded p-4">
-                <div class="text-gray-500 text-center">Transcriptions will appear here</div>
-            </div>
-        </main>
-
-        <footer class="mt-8 text-center text-gray-500 text-sm">
-            <p>© 2025 - Voice Transcription App</p>
-        </footer>
+<body class="bg-gray-100">
+  <div class="container mx-auto py-10">
+    <h1 class="text-3xl font-bold text-center mb-6">VAD Debug + Transcription</h1>
+    <div class="flex justify-center gap-4 mb-4">
+      <button id="start" class="bg-blue-600 text-white px-4 py-2 rounded">Start Listening</button>
+      <button id="stop" class="bg-red-600 text-white px-4 py-2 rounded">Stop Listening</button>
     </div>
+    <pre class="mt-6 bg-white p-4 rounded shadow text-sm h-64 overflow-y-auto" id="log"></pre>
+  </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Socket.IO for real-time communication
-            const socket = io();
-            const startButton = document.getElementById('start-button');
-            const stopButton = document.getElementById('stop-button');
-            const statusDiv = document.getElementById('status');
-            const transcriptContainer = document.getElementById('transcript-container');
-            const imageUpload = document.getElementById('image-upload');
-            const imagePreviewContainer = document.getElementById('image-preview-container');
-            const imagePreview = document.getElementById('image-preview');
-            const removeImageButton = document.getElementById('remove-image');
-            
-            let vadInstance = null;
-            let audioChunks = [];
-            let isRecording = false;
-            let currentImageFile = null;
+  <script>
+    const log = document.getElementById('log');
+    const socket = io();
+    let vadInstance = null;
 
-            // Handle connection events
-            socket.on('connect', () => {
-                console.log('Connected to server');
-            });
+    function debug(msg) {
+      const time = new Date().toLocaleTimeString();
+      log.textContent += `[${time}] ${msg}\n`;
+      log.scrollTop = log.scrollHeight;
+      console.log(msg);
+    }
 
-            socket.on('transcription_result', (data) => {
-                if (data.text) {
-                    addTranscript(data.text, data.type);
-                }
-            });
-            
-            socket.on('image_uploaded', (data) => {
-                updateStatus('Image uploaded and ready for analysis');
-                console.log('Image uploaded:', data);
-            });
+    socket.on('connect', () => {
+      debug('🔌 Socket.IO connected');
+    });
 
-            function updateStatus(message, isError = false) {
-                statusDiv.textContent = message;
-                statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
-            }
+    socket.on('transcription_result', (data) => {
+      const who = data.type === 'assistant' ? '🤖 AI' : '🗣️ You';
+      debug(`${who}: ${data.text}`);
+    });
 
-            function addTranscript(text, type = 'user') {
-                // Clear the placeholder if it's the first transcript
-                if (transcriptContainer.querySelector('.text-gray-500')) {
-                    transcriptContainer.innerHTML = '';
-                }
+    function float32ArrayToWav(audio) {
+      const sampleRate = 16000;
+      const int16Array = new Int16Array(audio.length);
+      for (let i = 0; i < audio.length; i++) {
+        const s = Math.max(-1, Math.min(1, audio[i]));
+        int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      const buffer = new ArrayBuffer(44 + int16Array.length * 2);
+      const view = new DataView(buffer);
+      writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + int16Array.length * 2, true);
+      writeString(view, 8, 'WAVE');
+      writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(view, 36, 'data');
+      view.setUint32(40, int16Array.length * 2, true);
+      for (let i = 0; i < int16Array.length; i++) {
+        view.setInt16(44 + i * 2, int16Array[i], true);
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
 
-                const transcriptDiv = document.createElement('div');
-                if (type === 'user') {
-                    transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded self-end';
-                    transcriptDiv.innerHTML = '<span class="font-semibold">You:</span> ' + text;
-                } else {
-                    transcriptDiv.className = 'mb-2 p-2 bg-green-50 rounded self-start';
-                    transcriptDiv.innerHTML = '<span class="font-semibold">AI:</span> ' + text;
-                }
-                transcriptContainer.appendChild(transcriptDiv);
-                transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
-            }
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
 
-            // Image upload handling
-            imageUpload.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const file = this.files[0];
-                    
-                    // Check if file is an image
-                    if (!file.type.match('image.*')) {
-                        updateStatus('Please select an image file', true);
-                        return;
-                    }
-                    
-                    // Check file size (max 5MB for client storage)
-                    if (file.size > 5 * 1024 * 1024) {
-                        updateStatus('Image is too large (max 5MB for client storage)', true);
-                        return;
-                    }
-                    
-                    currentImageFile = file;
-                    
-                    // Show preview
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        imagePreview.src = e.target.result;
-                        imagePreviewContainer.classList.remove('hidden');
-                    }
-                    reader.readAsDataURL(file);
-                    
-                    // Process image locally instead of uploading
-                    handleImageLocally(file);
-                }
-            });
-            
-            // Clear local image when removing it from UI
-            removeImageButton.addEventListener('click', function() {
-                imagePreview.src = '';
-                imagePreviewContainer.classList.add('hidden');
-                imageUpload.value = '';
-                currentImageFile = null;
-                
-                // Clear current image reference in localStorage
-                localStorage.removeItem('current-image-key');
-                
-                updateStatus('Image removed');
-            });
-            
-            // Remove image
-            removeImageButton.addEventListener('click', function() {
-                imagePreview.src = '';
-                imagePreviewContainer.classList.add('hidden');
-                imageUpload.value = '';
-                currentImageFile = null;
-                updateStatus('Image removed');
-            });
-            
-            // Function to handle image locally without server upload
-            function handleImageLocally(imageFile) {
-                updateStatus('Processing image locally...');
-                
-                // Convert the image to base64 for local processing
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const base64Image = e.target.result;
-                    // Store image in localStorage (with size check)
-                    if (base64Image.length > 5000000) { // ~5MB limit
-                        updateStatus('Image too large for local storage', true);
-                        return;
-                    }
-                    
-                    // Store image in localStorage with timestamp as key
-                    const imageKey = 'voice-assistant-image-' + Date.now();
-                    localStorage.setItem(imageKey, base64Image);
-                    
-                    // Store current image key for reference when sending voice
-                    localStorage.setItem('current-image-key', imageKey);
-                    
-                    updateStatus('Image stored locally');
-                    
-                    // Notify socket that we have a local image ready
-                    socket.emit('local_image_ready', true);
-                };
-                reader.readAsDataURL(imageFile);
-            }
+    document.getElementById('start').onclick = async () => {
+      debug('Initializing VAD...');
+      vadInstance = await vad.MicVAD.new({
+        onSpeechStart: () => {
+          debug('🟢 Speech started');
+        },
+        onSpeechEnd: async (audio) => {
+          debug('🔴 Speech ended');
+          if (!audio || !audio.length) {
+            debug('⚠️ No audio captured');
+            return;
+          }
 
-            async function initVAD() {
-                try {
-                    // Set up VAD with optimized settings for faster response
-                    vadInstance = await vad.MicVAD.new({
-                        onSpeechStart: () => {
-                            updateStatus('Speech detected! Recording...');
-                            console.log("Speech start detected");
-                            isRecording = true;
-                        },
-                        onSpeechEnd: async (audio) => {
-                            updateStatus('Processing speech...');
-                            console.log("Speech ended, sending for transcription");
-                            isRecording = false;
+          const wavBlob = float32ArrayToWav(audio);
+          const formData = new FormData();
+          formData.append('audio', wavBlob, 'speech.wav');
 
-                            // Convert Float32Array to WAV and send to server
-                            const wavBlob = await float32ArrayToWav(audio);
-                            const formData = new FormData();
-                            formData.append('audio', wavBlob, 'speech.wav');
-                            
-                            // Check if we have a current image to send with the audio
-                            const currentImageKey = localStorage.getItem('current-image-key');
-                            if (currentImageKey) {
-                                const base64Image = localStorage.getItem(currentImageKey);
-                                if (base64Image) {
-                                    // Add the base64 image to form data
-                                    formData.append('has_image', 'true');
-                                    formData.append('image_data', base64Image);
-                                }
-                            }
+          debug('📤 Sending audio to /transcribe');
 
-                            // Optimized for faster sending - use XMLHttpRequest for potential performance benefits
-                            const xhr = new XMLHttpRequest();
-                            xhr.open('POST', '/transcribe', true);
-                            xhr.onload = function() {
-                                if (xhr.status === 200) {
-                                    console.log("Audio sent successfully");
-                                    updateStatus('Ready to detect voice');
-                                } else {
-                                    console.error("Error sending audio:", xhr.statusText);
-                                    updateStatus('Error sending audio', true);
-                                }
-                            };
-                            xhr.onerror = function() {
-                                console.error("Request failed");
-                                updateStatus('Error sending audio', true);
-                            };
-                            xhr.send(formData);
-                        }
-                    });
-                    return true;
-                } catch (error) {
-                    console.error("Error initializing VAD:", error);
-                    updateStatus('Error initializing voice detection', true);
-                    return false;
-                }
-            }
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/transcribe', true);
+          xhr.onload = function () {
+            debug(`✅ Response from /transcribe: ${xhr.status}`);
+          };
+          xhr.onerror = function () {
+            debug('❌ Error sending audio');
+          };
+          xhr.send(formData);
+        },
+        minSpeechFrames: 5,
+        preSpeechPadFrames: 10,
+        redemptionFrames: 20,
+        maxSpeechFrames: 200
+      });
 
-            // Function to convert Float32Array to WAV format
-            function float32ArrayToWav(audio) {
-                // The VAD outputs audio at 16kHz
-                const sampleRate = 16000;
-                const numChannels = 1;
-                const bitsPerSample = 16;
+      await vadInstance.start();
+      debug('🎙️ Listening...');
+    };
 
-                // Convert Float32Array to Int16Array
-                const int16Array = new Int16Array(audio.length);
-                for (let i = 0; i < audio.length; i++) {
-                    // Convert float to int16
-                    const s = Math.max(-1, Math.min(1, audio[i]));
-                    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                }
-
-                // Create the WAV file
-                const buffer = new ArrayBuffer(44 + int16Array.length * 2);
-                const view = new DataView(buffer);
-
-                // RIFF header
-                writeString(view, 0, 'RIFF');
-                view.setUint32(4, 36 + int16Array.length * 2, true);
-                writeString(view, 8, 'WAVE');
-
-                // fmt chunk
-                writeString(view, 12, 'fmt ');
-                view.setUint32(16, 16, true);
-                view.setUint16(20, 1, true); // PCM format
-                view.setUint16(22, numChannels, true);
-                view.setUint32(24, sampleRate, true);
-                view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true);
-                view.setUint16(32, numChannels * bitsPerSample / 8, true);
-                view.setUint16(34, bitsPerSample, true);
-
-                // data chunk
-                writeString(view, 36, 'data');
-                view.setUint32(40, int16Array.length * 2, true);
-
-                // Write the PCM samples
-                const offset = 44;
-                for (let i = 0; i < int16Array.length; i++) {
-                    view.setInt16(offset + i * 2, int16Array[i], true);
-                }
-
-                return new Blob([buffer], { type: 'audio/wav' });
-            }
-
-            function writeString(view, offset, string) {
-                for (let i = 0; i < string.length; i++) {
-                    view.setUint8(offset + i, string.charCodeAt(i));
-                }
-            }
-
-            startButton.addEventListener('click', async () => {
-                startButton.classList.add('hidden');
-                stopButton.classList.remove('hidden');
-                updateStatus('Initializing voice detection...');
-
-                if (await initVAD()) {
-                    vadInstance.start();
-                    updateStatus('Listening for speech...');
-                } else {
-                    startButton.classList.remove('hidden');
-                    stopButton.classList.add('hidden');
-                }
-            });
-
-            stopButton.addEventListener('click', () => {
-                if (vadInstance) {
-                    vadInstance.destroy();
-                    vadInstance = null;
-                }
-                stopButton.classList.add('hidden');
-                startButton.classList.remove('hidden');
-                updateStatus('Voice detection stopped');
-            });
-            
-            // Add drag and drop functionality for images
-            const dropZone = document.querySelector('label[for="image-upload"]');
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, highlight, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, unhighlight, false);
-            });
-            
-            function highlight() {
-                dropZone.classList.add('bg-gray-200');
-            }
-            
-            function unhighlight() {
-                dropZone.classList.remove('bg-gray-200');
-            }
-            
-            dropZone.addEventListener('drop', handleDrop, false);
-            
-            function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                
-                if (files && files.length) {
-                    imageUpload.files = files;
-                    // Trigger change event
-                    const event = new Event('change');
-                    imageUpload.dispatchEvent(event);
-                }
-            }
-        });
-    </script>
+    document.getElementById('stop').onclick = () => {
+      if (vadInstance) {
+        vadInstance.destroy();
+        vadInstance = null;
+        debug('🛑 Stopped VAD');
+      }
+    };
+  </script>
 </body>
 </html>
