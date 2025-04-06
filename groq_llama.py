@@ -21,12 +21,12 @@ def get_llama_response(transcription, conversation_history=None):
     # If no history is provided, use a default system message
     if not conversation_history or not isinstance(conversation_history, list) or len(conversation_history) == 0:
         conversation_history = [
-            {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
+            {"role": "system", "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."}
         ]
     
     # Make sure there's a system message at the beginning
     if conversation_history[0]["role"] != "system":
-        conversation_history.insert(0, {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."})
+        conversation_history.insert(0, {"role": "system", "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."})
     
     # Add user message to conversation history if it's not already there
     if not conversation_history or conversation_history[-1]["role"] != "user" or conversation_history[-1]["content"] != transcription:

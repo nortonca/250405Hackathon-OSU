@@ -29,8 +29,12 @@ def get_vision_response(transcription, image_data):
     else:
         base64_image = image_data
 
-    # Create a fresh conversation for the vision model without system message
+    # Create a conversation with system prompt for the vision model
     vision_messages = [
+        {
+            "role": "system",
+            "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."
+        },
         {
             "role": "user", 
             "content": [
@@ -49,7 +53,7 @@ def get_vision_response(transcription, image_data):
     completion = client.chat.completions.create(
         model="llama-3.2-11b-vision-preview",
         messages=vision_messages,
-        temperature=0.7,
+        temperature=1.0,  # More creative/diverse responses
         max_completion_tokens=1024,
         top_p=1,
         stream=False,
