@@ -142,9 +142,9 @@
                         return;
                     }
                     
-                    // Check file size (max 10MB)
-                    if (file.size > 10 * 1024 * 1024) {
-                        updateStatus('Image is too large (max 10MB)', true);
+                    // Check file size (max 5MB for client storage)
+                    if (file.size > 5 * 1024 * 1024) {
+                        updateStatus('Image is too large (max 5MB for client storage)', true);
                         return;
                     }
                     
@@ -158,9 +158,22 @@
                     }
                     reader.readAsDataURL(file);
                     
-                    // Upload image to server
-                    uploadImage(file);
+                    // Process image locally instead of uploading
+                    handleImageLocally(file);
                 }
+            });
+            
+            // Clear local image when removing it from UI
+            removeImageButton.addEventListener('click', function() {
+                imagePreview.src = '';
+                imagePreviewContainer.classList.add('hidden');
+                imageUpload.value = '';
+                currentImageFile = null;
+                
+                // Clear current image reference in localStorage
+                localStorage.removeItem('current-image-key');
+                
+                updateStatus('Image removed');
             });
             
             // Remove image
@@ -172,29 +185,33 @@
                 updateStatus('Image removed');
             });
             
-            // Function to upload image
-            function uploadImage(imageFile) {
-                updateStatus('Uploading image...');
+            // Function to handle image locally without server upload
+            function handleImageLocally(imageFile) {
+                updateStatus('Processing image locally...');
                 
-                const formData = new FormData();
-                formData.append('image', imageFile);
-                
-                fetch('/upload-image', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateStatus('Image uploaded successfully');
-                    } else {
-                        updateStatus('Error uploading image: ' + data.error, true);
+                // Convert the image to base64 for local processing
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    // Store image in localStorage (with size check)
+                    if (base64Image.length > 5000000) { // ~5MB limit
+                        updateStatus('Image too large for local storage', true);
+                        return;
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    updateStatus('Error uploading image', true);
-                });
+                    
+                    // Store image in localStorage with timestamp as key
+                    const imageKey = 'voice-assistant-image-' + Date.now();
+                    localStorage.setItem(imageKey, base64Image);
+                    
+                    // Store current image key for reference when sending voice
+                    localStorage.setItem('current-image-key', imageKey);
+                    
+                    updateStatus('Image stored locally');
+                    
+                    // Notify socket that we have a local image ready
+                    socket.emit('local_image_ready', true);
+                };
+                reader.readAsDataURL(imageFile);
             }
 
             async function initVAD() {
@@ -215,6 +232,17 @@
                             const wavBlob = await float32ArrayToWav(audio);
                             const formData = new FormData();
                             formData.append('audio', wavBlob, 'speech.wav');
+                            
+                            // Check if we have a current image to send with the audio
+                            const currentImageKey = localStorage.getItem('current-image-key');
+                            if (currentImageKey) {
+                                const base64Image = localStorage.getItem(currentImageKey);
+                                if (base64Image) {
+                                    // Add the base64 image to form data
+                                    formData.append('has_image', 'true');
+                                    formData.append('image_data', base64Image);
+                                }
+                            }
 
                             // Optimized for faster sending - use XMLHttpRequest for potential performance benefits
                             const xhr = new XMLHttpRequest();

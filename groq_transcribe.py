@@ -1,8 +1,8 @@
-
 import os
 import base64
 from groq import Groq
 from dotenv import load_dotenv
+
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -11,12 +11,8 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Keep track of conversation history
-conversation_history = [
-    {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
-]
-
 def transcribe_audio(file_path):
+    """Transcribe audio to text using Groq's API"""
     with open(file_path, "rb") as audio_file:
         response = client.audio.transcriptions.create(
             file=audio_file,
@@ -24,67 +20,44 @@ def transcribe_audio(file_path):
         )
         return response.text
 
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
-
-def get_ai_response(transcription, image_path=None):
-    # Create message content
-    if image_path and os.path.exists(image_path):
-        # Using the vision model for image analysis - create a fresh conversation without system message
-        base64_image = encode_image(image_path)
-        
-        # Create a fresh conversation for the vision model without system message
-        vision_messages = [
-            {
-                "role": "user", 
-                "content": [
-                    {"type": "text", "text": transcription},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}",
-                        },
-                    },
-                ]
-            }
-        ]
-        
-        # Use vision model for image + text
-        completion = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
-            messages=vision_messages,
-            temperature=0.7,
-            max_completion_tokens=1024,
-            top_p=1,
-            stream=False,
-            stop=None,
-        )
-        
-        # Add the exchange to conversation history as plain text for future context
-        conversation_history.append({"role": "user", "content": transcription + " [Image analysis requested]"})
+def get_vision_response(transcription, image_data):
+    """Process an image and text query using the vision model"""
+    # The image_data is already in base64 from the client
+    # Extract the base64 part if it includes the data URL prefix
+    if ',' in image_data:
+        base64_image = image_data.split(',', 1)[1]
     else:
-        # Regular text-only conversation
-        conversation_history.append({"role": "user", "content": transcription})
-        
-        # Get response from Groq API
-        completion = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
-            messages=conversation_history,
-            temperature=0.7,
-            max_completion_tokens=1024,
-            top_p=1,
-            stream=False,
-            stop=None,
-        )
-    
-    # Extract response text
-    response_text = completion.choices[0].message.content
-    
-    # Add assistant response to conversation history
-    conversation_history.append({"role": "assistant", "content": response_text})
-    
-    return response_text
+        base64_image = image_data
+
+    # Create a fresh conversation for the vision model without system message
+    vision_messages = [
+        {
+            "role": "user", 
+            "content": [
+                {"type": "text", "text": transcription},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}",
+                    },
+                },
+            ]
+        }
+    ]
+
+    # Use vision model for image + text
+    completion = client.chat.completions.create(
+        model="llama-3.2-11b-vision-preview",
+        messages=vision_messages,
+        temperature=0.7,
+        max_completion_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+
+    # Extract and return vision model response
+    return completion.choices[0].message.content
 
 if __name__ == "__main__":
     audio_path = "example_audio.wav"  # replace with actual audio file
