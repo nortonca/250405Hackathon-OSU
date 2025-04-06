@@ -129,43 +129,58 @@ const AudioProcessor = {
 
     // Process audio pipeline
     processPipeline: async function(audioData, imageData = null, conversationHistory = []) {
-        // Convert audio to WAV
-        const wavBlob = this.float32ToWav(audioData);
+        try {
+            // Convert audio to WAV
+            const wavBlob = this.float32ToWav(audioData);
+            console.log("Audio converted to WAV format");
 
-        // Create form data
-        const formData = new FormData();
-        formData.append('audio', wavBlob, 'speech.wav');
+            // Create form data
+            const formData = new FormData();
+            formData.append('audio', wavBlob, 'speech.wav');
 
-        // Always use camera frame if active
-        if (CameraManager.isActive) {
-            imageData = CameraManager.getLastFrame();
+            // Always use camera frame if active
+            if (CameraManager.isActive) {
+                imageData = CameraManager.getLastFrame();
+                console.log("Using active camera frame");
+            }
+
+            // Must have image data
+            if (!imageData) {
+                console.error("Missing image data");
+                throw new Error("Image data required for processing");
+            }
+            
+            // Add image data
+            formData.append('has_image', 'true');
+            formData.append('image_data', imageData);
+            console.log(`Image data added to form, length: ${imageData.length}`);
+            
+            // Send conversation history for context
+            if (conversationHistory && conversationHistory.length > 0) {
+                formData.append('conversation_history', JSON.stringify(conversationHistory));
+                console.log(`Added conversation history with ${conversationHistory.length} messages`);
+            }
+
+            // Send to server
+            console.log("Sending audio to server...");
+            const response = await fetch('/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            console.log(`Server response status: ${response.status}`);
+            if (!response.ok) {
+                console.error("Error sending audio:", await response.text());
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const responseData = await response.json();
+            console.log("Audio sent successfully");
+            return responseData;
+        } catch (error) {
+            console.error("Error in audio processing:", error);
+            throw error;
         }
-
-        // Must have image data
-        if (!imageData) {
-            throw new Error("Image data required for processing");
-        }
-        
-        // Add image data
-        formData.append('has_image', 'true');
-        formData.append('image_data', imageData);
-        
-        // Send conversation history for context
-        if (conversationHistory && conversationHistory.length > 0) {
-            formData.append('conversation_history', JSON.stringify(conversationHistory));
-        }
-
-        // Send to server
-        const response = await fetch('/transcribe', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
-
-        return await response.json();
     }
 };
 

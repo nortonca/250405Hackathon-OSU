@@ -33,13 +33,19 @@ def transcribe():
 
     try:
         # 1. Transcribe audio directly
-        transcript = transcribe_audio(temp_path)
+        try:
+            transcript = transcribe_audio(temp_path)
+            print(f"Transcription successful: {transcript}")
+        except Exception as e:
+            print(f"Transcription failed: {str(e)}")
+            raise Exception(f"Audio transcription error: {str(e)}")
         
         # 2. Get conversation history from client if available
         conversation_history = []
         if 'conversation_history' in request.form:
             try:
                 conversation_history = json.loads(request.form.get('conversation_history'))
+                print(f"Received conversation history with {len(conversation_history)} messages")
             except Exception as e:
                 print(f"Error parsing conversation history: {str(e)}")
 
@@ -47,12 +53,18 @@ def transcribe():
         has_image = request.form.get('has_image') == 'true'
         if has_image and 'image_data' in request.form:
             image_data = request.form.get('image_data')
+            print(f"Image data received, length: {len(image_data) if image_data else 0}")
             
             # 4. Send transcript to client first for immediate feedback
             socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
             
             # 5. Pass transcription directly to vision model
-            ai_response = get_vision_response(transcript, image_data, conversation_history)
+            try:
+                ai_response = get_vision_response(transcript, image_data, conversation_history)
+                print(f"Vision model response generated successfully")
+            except Exception as e:
+                print(f"Vision model error: {str(e)}")
+                raise Exception(f"Vision model processing error: {str(e)}")
             
             # 6. Send AI response to client
             socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
@@ -64,9 +76,12 @@ def transcribe():
                 'response': ai_response
             }), 200
         else:
-            return jsonify({'error':'Image data required for processing'}), 400
+            error_msg = "Image data required for processing"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 400
     except Exception as e:
-        print(f"Transcription pipeline error: {str(e)}")
+        error_msg = f"Transcription pipeline error: {str(e)}"
+        print(error_msg)
         socketio.emit('transcription_error', {'error': str(e)})
         return jsonify({'error': str(e)}), 500
     finally:

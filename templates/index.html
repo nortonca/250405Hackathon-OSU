@@ -141,6 +141,9 @@
                 if (type === 'user') {
                     transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded self-end';
                     transcriptDiv.innerHTML = '<span class="font-semibold">You:</span> ' + text;
+                } else if (type === 'error') {
+                    transcriptDiv.className = 'mb-2 p-2 bg-red-50 rounded self-start';
+                    transcriptDiv.innerHTML = '<span class="font-semibold">Error:</span> ' + text;
                 } else {
                     transcriptDiv.className = 'mb-2 p-2 bg-green-50 rounded self-start';
                     transcriptDiv.innerHTML = '<span class="font-semibold">AI:</span> ' + text;
@@ -235,7 +238,17 @@
                                 }
                             } catch (error) {
                                 console.error("Error in audio processing:", error);
-                                updateStatus('Error: ' + error.message, true);
+                                // Display a more user-friendly error message
+                                let errorMessage = error.message || "Unknown error";
+                                if (errorMessage.includes("500")) {
+                                    errorMessage = "Server error: The AI model is currently unavailable. Please try again in a moment.";
+                                } else if (errorMessage.includes("Image data required")) {
+                                    errorMessage = "Please ensure your camera is enabled or an image is uploaded.";
+                                }
+                                updateStatus('Processing error: ' + errorMessage, true);
+
+                                // Add error message to transcript container for better visibility
+                                addTranscript("Error: " + errorMessage, "error");
                             }
                         },
                         onVADMisfire: () => {

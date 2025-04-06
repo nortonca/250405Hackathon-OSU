@@ -70,16 +70,21 @@ def get_vision_response(transcription, image_data, conversation_history=None):
         ]
     })
     
-    # Use Llama 4 Scout model for image + text
-    completion = client.chat.completions.create(
-        model=LLAMA_MODEL,
-        messages=messages,
-        temperature=1,
-        max_completion_tokens=250,
-        top_p=1,
-        stream=False,
-        stop=None,
-    )
-    
-    # Extract and return vision model response
-    return completion.choices[0].message.content
+    try:
+        # Use Llama 4 Scout model for image + text
+        completion = client.chat.completions.create(
+            model=LLAMA_MODEL,
+            messages=messages,
+            temperature=1,
+            max_completion_tokens=250,
+            top_p=1,
+            stream=False,
+            stop=None,
+        )
+        
+        # Extract and return vision model response
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"Error in Groq API call: {str(e)}")
+        # Return error details for debugging
+        raise Exception(f"Groq API error: {str(e)}")
