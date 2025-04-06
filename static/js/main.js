@@ -63,11 +63,6 @@ const CameraManager = {
             const capturedImage = this.canvas.toDataURL('image/jpeg');
             this.capturedFrame = capturedImage;
             
-            // Store the image in history
-            if (window.ImageProcessor) {
-                window.ImageProcessor.storeImage(capturedImage);
-            }
-            
             // Make the canvas container visible
             document.getElementById('captured-frame-container').classList.remove('hidden');
             
@@ -142,29 +137,15 @@ const AudioProcessor = {
         const formData = new FormData();
         formData.append('audio', wavBlob, 'speech.wav');
         
-        // Update UI to show if we're using image context
-        const imageContextBadge = document.getElementById('image-context-badge');
-        if (imageContextBadge) {
-            const hasImageContext = imageData || (ImageProcessor.getRecentImages().length > 0);
-            imageContextBadge.classList.toggle('hidden', !hasImageContext);
-        }
-        
         // If camera is active, get the captured frame
         if (CameraManager.isActive) {
             imageData = CameraManager.getLastFrame();
         }
         
-        // Add current image if available
+        // Add image if available
         if (imageData) {
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
-        }
-        
-        // Add recent images history
-        const recentImages = ImageProcessor.getRecentImages();
-        if (recentImages && recentImages.length > 0) {
-            formData.append('has_image_history', 'true');
-            formData.append('image_history', JSON.stringify(recentImages));
         }
         
         // Add conversation history if available
@@ -188,9 +169,6 @@ const AudioProcessor = {
 
 // Image processing utilities
 const ImageProcessor = {
-    // Maximum number of recent images to track
-    maxRecentImages: 3,
-    
     // Convert image file to base64
     fileToBase64: function(file) {
         return new Promise((resolve, reject) => {
@@ -201,51 +179,20 @@ const ImageProcessor = {
         });
     },
     
-    // Store image locally and manage image history
+    // Store image locally
     storeImage: async function(imageFile, prefix = 'voice-assistant-image-') {
         try {
-            let base64Image;
-            
-            // Handle both File objects and base64 strings
-            if (typeof imageFile === 'string') {
-                base64Image = imageFile;
-            } else {
-                base64Image = await this.fileToBase64(imageFile);
-            }
+            const base64Image = await this.fileToBase64(imageFile);
             
             // Check size for localStorage (~5MB limit)
             if (base64Image.length > 5000000) {
-                console.log("Resizing image to fit in localStorage");
-                // Future enhancement: implement image resizing
+                throw new Error('Image too large for local storage');
             }
             
             // Store with timestamp key
             const imageKey = prefix + Date.now();
             localStorage.setItem(imageKey, base64Image);
-            
-            // Update current image key
             localStorage.setItem('current-image-key', imageKey);
-            
-            // Maintain a list of recent image keys (max 3)
-            let recentImageKeys = JSON.parse(localStorage.getItem('recent-image-keys') || '[]');
-            recentImageKeys.unshift(imageKey); // Add newest to the beginning
-            
-            // Keep only the most recent ones
-            if (recentImageKeys.length > this.maxRecentImages) {
-                // Get keys to remove
-                const keysToRemove = recentImageKeys.splice(this.maxRecentImages);
-                
-                // Remove old images from storage
-                keysToRemove.forEach(key => {
-                    localStorage.removeItem(key);
-                });
-            }
-            
-            // Update the recent keys in storage
-            localStorage.setItem('recent-image-keys', JSON.stringify(recentImageKeys));
-            
-            // Update UI to reflect image history
-            this.updateImageHistoryUI();
             
             return {
                 success: true,
@@ -258,84 +205,6 @@ const ImageProcessor = {
                 success: false,
                 error: error.message
             };
-        }
-    },
-    
-    // Get all recent images
-    getRecentImages: function() {
-        const recentKeys = JSON.parse(localStorage.getItem('recent-image-keys') || '[]');
-        return recentKeys.map(key => {
-            return {
-                key: key,
-                data: localStorage.getItem(key)
-            };
-        }).filter(img => img.data !== null); // Filter out any null images
-    },
-    
-    // Update the UI to display image history
-    updateImageHistoryUI: function() {
-        const imageHistoryContainer = document.getElementById('image-history');
-        const imageHistoryCount = document.getElementById('image-history-count');
-        
-        if (!imageHistoryContainer) {
-            console.error("Image history container not found in DOM");
-            return;
-        }
-        
-        // Get recent images
-        const recentImages = this.getRecentImages();
-        console.log(`Updating UI with ${recentImages.length} recent images`);
-        
-        // Update count
-        if (imageHistoryCount) {
-            imageHistoryCount.textContent = recentImages.length;
-        }
-        
-        // Clear current history display
-        imageHistoryContainer.innerHTML = '';
-        
-        // If no images, show placeholders
-        if (!recentImages || recentImages.length === 0) {
-            for (let i = 0; i < this.maxRecentImages; i++) {
-                const placeholder = document.createElement('div');
-                placeholder.className = 'image-placeholder w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center';
-                placeholder.innerHTML = '<span class="text-gray-400 text-xs">Empty</span>';
-                imageHistoryContainer.appendChild(placeholder);
-            }
-            return;
-        }
-        
-        // Add recent images (newest first)
-        recentImages.forEach((img, index) => {
-            if (!img || img.length < 10) {
-                console.error(`Invalid image data at index ${index}`);
-                return;
-            }
-            
-            const imgContainer = document.createElement('div');
-            imgContainer.className = 'relative w-24 h-24 border border-gray-300 rounded-lg overflow-hidden';
-            
-            const imgElement = document.createElement('img');
-            imgElement.src = img; // Use the img directly as it's the base64 data
-            imgElement.className = 'w-full h-full object-cover';
-            imgElement.alt = `Previous image ${index + 1}`;
-            
-            // Add index badge
-            const indexBadge = document.createElement('div');
-            indexBadge.className = 'absolute top-1 right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center';
-            indexBadge.textContent = index + 1;
-            
-            imgContainer.appendChild(imgElement);
-            imgContainer.appendChild(indexBadge);
-            imageHistoryContainer.appendChild(imgContainer);
-        });
-        
-        // Add empty placeholders if less than max
-        for (let i = recentImages.length; i < this.maxRecentImages; i++) {
-            const placeholder = document.createElement('div');
-            placeholder.className = 'image-placeholder w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center';
-            placeholder.innerHTML = '<span class="text-gray-400 text-xs">Empty</span>';
-            imageHistoryContainer.appendChild(placeholder);
         }
     }
 };
@@ -353,12 +222,6 @@ if (typeof ImageProcessor === 'undefined') {
     console.log("Creating global ImageProcessor");
     globalThis.ImageProcessor = ImageProcessor;
 }
-
-// Initialize UI elements on load
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize image history UI
-    ImageProcessor.updateImageHistoryUI();
-});
 
 // Log to confirm the script loaded
 console.log("Audio and Image Processing utilities loaded");

@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import os
@@ -34,10 +35,10 @@ def transcribe():
     try:
         # 1. Transcribe audio
         transcript = transcribe_audio(temp_path)
-
+        
         # 2. Send transcription to client
         socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
-
+        
         # 3. Get conversation history from client if available
         conversation_history = []
         if 'conversation_history' in request.form:
@@ -45,46 +46,21 @@ def transcribe():
                 conversation_history = json.loads(request.form.get('conversation_history'))
             except Exception as e:
                 print(f"Error parsing conversation history: {str(e)}")
-
+        
         # 4. Process with appropriate model
         has_image = request.form.get('has_image') == 'true'
-        has_image_history = request.form.get('has_image_history') == 'true'
-
+        
         if has_image and 'image_data' in request.form:
-            # Get current image
+            # Vision model path with client-provided image
             image_data = request.form.get('image_data')
-
-            # Get image history if available
-            image_history = []
-            if has_image_history and 'image_history' in request.form:
-                try:
-                    image_history = json.loads(request.form.get('image_history'))
-                    print(f"Received {len(image_history)} images in history")
-                    
-                    # Validate image history data
-                    valid_history = []
-                    for img in image_history:
-                        if img and isinstance(img, str) and len(img) > 100:  # Basic validation
-                            valid_history.append(img)
-                    
-                    image_history = valid_history
-                    print(f"Valid images in history: {len(image_history)}")
-                except Exception as e:
-                    print(f"Error parsing image history: {str(e)}")
-
-            # Only use most recent 3 images in history to avoid overwhelming context
-            if image_history and len(image_history) > 3:
-                image_history = image_history[-3:]  # Use the 3 most recent images
-
-            # Use vision response with image context
-            ai_response = get_vision_response(transcript, image_data, image_history)
+            ai_response = get_vision_response(transcript, image_data)
         else:
             # Regular text-only conversation with Llama and client-provided history
             ai_response = get_llama_response(transcript, conversation_history)
-
+        
         # 5. Send AI response to client
         socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
-
+        
         # 6. Return success to complete the request
         return jsonify({
             'success': True,
