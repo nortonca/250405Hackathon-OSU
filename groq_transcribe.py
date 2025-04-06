@@ -1,4 +1,3 @@
-
 import os
 import base64
 from groq import Groq
@@ -12,9 +11,6 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Import system message from llama module to maintain consistency
-from groq_llama import LUMI_SYSTEM_MESSAGE, LLAMA_MODEL
-
 def transcribe_audio(file_path):
     """Transcribe audio to text using Groq's API"""
     with open(file_path, "rb") as audio_file:
@@ -24,67 +20,45 @@ def transcribe_audio(file_path):
         )
         return response.text
 
-def get_vision_response(transcription, image_data, conversation_history=None):
-    """
-    Process an image and text query using the Llama 4 Scout vision model
-    
-    Args:
-        transcription: The user's transcribed speech
-        image_data: Base64 encoded image data
-        conversation_history: Optional conversation history
-    """
+def get_vision_response(transcription, image_data):
+    """Process an image and text query using the vision model"""
+    # The image_data is already in base64 from the client
     # Extract the base64 part if it includes the data URL prefix
     if ',' in image_data:
         base64_image = image_data.split(',', 1)[1]
     else:
         base64_image = image_data
-    
-    # Default message structure with system message
-    messages = [
+
+    # Create a fresh conversation for the vision model without system message
+    vision_messages = [
         {
-            "role": "system",
-            "content": LUMI_SYSTEM_MESSAGE
+            "role": "user", 
+            "content": [
+                {"type": "text", "text": transcription},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}",
+                    },
+                },
+            ]
         }
     ]
-    
-    # Add conversation history if available, skipping system message if exists
-    if conversation_history and isinstance(conversation_history, list):
-        start_idx = 1 if conversation_history and conversation_history[0]["role"] == "system" else 0
-        for msg in conversation_history[start_idx:]:
-            messages.append(msg)
-    
-    # Add the current user message with image directly
-    messages.append({
-        "role": "user",
-        "content": [
-            {
-                "type": "text",
-                "text": transcription
-            },
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_image}"
-                }
-            }
-        ]
-    })
-    
-    try:
-        # Use Llama 4 Scout model for image + text
-        completion = client.chat.completions.create(
-            model=LLAMA_MODEL,
-            messages=messages,
-            temperature=1,
-            max_completion_tokens=250,
-            top_p=1,
-            stream=False,
-            stop=None,
-        )
-        
-        # Extract and return vision model response
-        return completion.choices[0].message.content
-    except Exception as e:
-        print(f"Error in Groq API call: {str(e)}")
-        # Return error details for debugging
-        raise Exception(f"Groq API error: {str(e)}")
+
+    # Use vision model for image + text
+    completion = client.chat.completions.create(
+        model="llama-3.2-11b-vision-preview",
+        messages=vision_messages,
+        temperature=0.7,
+        max_completion_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+
+    # Extract and return vision model response
+    return completion.choices[0].message.content
+
+if __name__ == "__main__":
+    audio_path = "example_audio.wav"  # replace with actual audio file
+    transcribe_audio(audio_path)

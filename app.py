@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import os
@@ -6,7 +7,7 @@ import uuid
 import base64
 import json
 from groq_transcribe import transcribe_audio, get_vision_response
-#from groq_llama import get_llama_response #Removed Llama import
+from groq_llama import get_llama_response
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key')
@@ -32,56 +33,42 @@ def transcribe():
     audio_file.save(temp_path)
 
     try:
-        # 1. Transcribe audio directly
-        try:
-            transcript = transcribe_audio(temp_path)
-            print(f"Transcription successful: {transcript}")
-        except Exception as e:
-            print(f"Transcription failed: {str(e)}")
-            raise Exception(f"Audio transcription error: {str(e)}")
+        # 1. Transcribe audio
+        transcript = transcribe_audio(temp_path)
         
-        # 2. Get conversation history from client if available
+        # 2. Send transcription to client
+        socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
+        
+        # 3. Get conversation history from client if available
         conversation_history = []
         if 'conversation_history' in request.form:
             try:
                 conversation_history = json.loads(request.form.get('conversation_history'))
-                print(f"Received conversation history with {len(conversation_history)} messages")
             except Exception as e:
                 print(f"Error parsing conversation history: {str(e)}")
-
-        # 3. Process with vision model
+        
+        # 4. Process with appropriate model
         has_image = request.form.get('has_image') == 'true'
+        
         if has_image and 'image_data' in request.form:
+            # Vision model path with client-provided image
             image_data = request.form.get('image_data')
-            print(f"Image data received, length: {len(image_data) if image_data else 0}")
-            
-            # 4. Send transcript to client first for immediate feedback
-            socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
-            
-            # 5. Pass transcription directly to vision model
-            try:
-                ai_response = get_vision_response(transcript, image_data, conversation_history)
-                print(f"Vision model response generated successfully")
-            except Exception as e:
-                print(f"Vision model error: {str(e)}")
-                raise Exception(f"Vision model processing error: {str(e)}")
-            
-            # 6. Send AI response to client
-            socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
-            
-            # 7. Return success to complete the request
-            return jsonify({
-                'success': True,
-                'transcript': transcript,
-                'response': ai_response
-            }), 200
+            ai_response = get_vision_response(transcript, image_data)
         else:
-            error_msg = "Image data required for processing"
-            print(error_msg)
-            return jsonify({'error': error_msg}), 400
+            # Regular text-only conversation with Llama and client-provided history
+            ai_response = get_llama_response(transcript, conversation_history)
+        
+        # 5. Send AI response to client
+        socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
+        
+        # 6. Return success to complete the request
+        return jsonify({
+            'success': True,
+            'transcript': transcript,
+            'response': ai_response
+        }), 200
     except Exception as e:
-        error_msg = f"Transcription pipeline error: {str(e)}"
-        print(error_msg)
+        print(f"Transcription pipeline error: {str(e)}")
         socketio.emit('transcription_error', {'error': str(e)})
         return jsonify({'error': str(e)}), 500
     finally:
