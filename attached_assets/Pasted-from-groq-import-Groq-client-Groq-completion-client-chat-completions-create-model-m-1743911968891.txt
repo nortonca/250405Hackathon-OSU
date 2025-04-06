@@ -1,0 +1,57 @@
+from groq import Groq
+
+client = Groq()
+completion = client.chat.completions.create(
+    model="meta-llama/llama-4-scout-17b-16e-instruct",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "This "
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "${IMAGE_DATA_URL}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "The image presents a comprehensive overview of various social media applications, categorized into distinct groups. The title \"Categories of Social Media Apps\" is prominently displayed in white text at the top.\n\n**Categories and Examples:**\n\n*   **Social Networking Apps**\n    *   Facebook\n    *   LinkedIn\n*   **Photo-Sharing Apps**\n    *   Instagram\n    *   Snapchat\n*   **Video-Sharing Apps**\n    *   Youtube\n    *   Vimeo\n*   **Microblogging Apps**\n    *   Twitter\n    *   Tumblr\n*   **Discussion and Community Forums**\n    *   Quora\n    *   Reddit\n*   **Social Review Networks**\n    *   Yelp\n    *   Influenster\n*   **Interest-based Networks**\n    *   Goodreads\n    *   Last.fm\n*   **Blogging and Publishing Apps**\n    *   WordPress\n    *   Medium\n*   **Collaborative Economy Networks**\n    *   Rover\n    *   AirBnB\n*   **Anonymous Social Networks**\n    *   Whisper\n    *   Ask.fm\n\n**Visual Elements:**\n\n*   The background features a blue color scheme with a subtle diagonal pattern.\n*   A watermark in the bottom-right corner reads \"GOODCORE\".\n\n**Key Takeaways:**\n\n*   The image effectively categorizes social media apps into nine distinct categories.\n*   Each category includes two examples of popular social media applications.\n*   The visual representation provides a clear and concise overview of the diverse range of social media platforms available."
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "and this\n"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "${IMAGE_DATA_URL}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "The image presents a comprehensive overview of social media applications, categorized into distinct groups, alongside a smartphone on a wooden surface.\n\n**Social Media Categories:**\n\n* **Social Networking Apps**\n\t+ Facebook\n\t+ LinkedIn\n* **Photo-Sharing Apps**\n\t+ Instagram\n\t+ Snapchat\n* **Video-Sharing Apps**\n\t+ Youtube\n\t+ Vimeo\n* **Microblogging Apps**\n\t+ Twitter\n\t+ Tumblr\n* **Discussion and Community Forums**\n\t+ Quora\n\t+ Reddit\n* **Social Review Networks**\n\t+ Yelp\n\t+ Influenster\n* **Interest-based Networks**\n\t+ Goodreads\n\t+ Last.fm\n* **Blogging and Publishing Apps**\n\t+ WordPress\n\t+ Medium\n* **Collaborative Economy Networks**\n\t+ Rover\n\t+ AirBnB\n* **Anonymous Social Networks**\n\t+ Whisper\n\t+ Ask.fm\n\n**Smartphone and Accessories:**\n\n* A blue phone case with a black logo featuring a stylized \"C\" is placed on a wooden surface.\n* A pair of black earbuds is positioned above the phone case.\n* A charging cable is partially visible to the right of the phone case.\n\n**Background:**\n\n* The background features a wooden surface with a diagonal striped pattern.\n\nOverall, the image effectively categorizes social media applications and showcases a smartphone and its accessories on a wooden surface."
+        }
+    ],
+    temperature=1,
+    max_completion_tokens=1024,
+    top_p=1,
+    stream=False,
+    stop=None,
+)
+
+print(completion.choices[0].message)
