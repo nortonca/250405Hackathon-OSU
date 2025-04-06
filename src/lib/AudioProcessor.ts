@@ -13,10 +13,17 @@ interface TranscriptionMetadata {
   no_speech_prob?: number;
 }
 
+interface ToolCall {
+  name: string;
+  result: string;
+  isError: boolean;
+}
+
 interface TranscriptionResult {
   transcript: string;
   metadata: TranscriptionMetadata;
   aiResponse?: string;
+  toolCalls?: ToolCall[];
 }
 
 export class AudioProcessor {
@@ -64,14 +71,12 @@ export class AudioProcessor {
 
   static async processPipeline(audio: Float32Array, imageData: string | null = null): Promise<TranscriptionResult> {
     try {
-      // Convert audio to WAV format
       const audioChunks = await AudioConverter.chunkAudio(audio);
       let fullTranscript = '';
       let combinedMetadata: TranscriptionMetadata = {
         id: Date.now().toString()
       };
 
-      // Process each chunk
       for (let i = 0; i < audioChunks.length; i++) {
         const formData = new FormData();
         formData.append('file', audioChunks[i], 'chunk.wav');
@@ -95,11 +100,8 @@ export class AudioProcessor {
         }
 
         const result = await response.json();
-
-        // Append transcribed text
         fullTranscript += (i > 0 ? ' ' : '') + result.text;
 
-        // Update metadata with quality indicators
         if (result.segments && result.segments.length > 0) {
           const lastSegment = result.segments[result.segments.length - 1];
           combinedMetadata = {
@@ -111,16 +113,17 @@ export class AudioProcessor {
         }
       }
 
-      // Get AI response with visual context
-      const aiResponse = await VisualAIService.getResponse(fullTranscript.trim(), imageData);
-
-      // Speak the AI response
-      await SpeechService.speak(aiResponse);
+      const { aiResponse, toolCalls } = await VisualAIService.getResponse(fullTranscript.trim(), imageData);
+      
+      if (aiResponse) {
+        await SpeechService.speak(aiResponse);
+      }
 
       return {
         transcript: fullTranscript.trim(),
         metadata: combinedMetadata,
-        aiResponse
+        aiResponse,
+        toolCalls
       };
     } catch (error) {
       console.error('Error in audio processing:', error);

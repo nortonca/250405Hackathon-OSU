@@ -1,11 +1,19 @@
 import { Tool, ToolCall, ToolResult, ToolDefinition } from './types';
-import { weatherTools } from './weather';
+import { geminiSearchTools } from './gemini-search';
+import { modalTools } from './modal';
+import { customerDataTools } from './customer-data';
+import { productSearchTools } from './product-search';
 
 class ToolRegistry {
   private tools: Map<string, ToolDefinition> = new Map();
 
   constructor() {
-    this.registerTools(weatherTools);
+    this.registerTools([
+      ...geminiSearchTools, 
+      ...modalTools,
+      ...customerDataTools,
+      ...productSearchTools
+    ]);
   }
 
   private registerTools(tools: ToolDefinition[]) {

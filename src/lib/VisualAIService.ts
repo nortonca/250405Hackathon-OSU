@@ -11,7 +11,18 @@ interface Message {
       url: string;
     };
   }[];
-  name?: string; // Added name property for function messages
+  name?: string;
+}
+
+interface ToolCallResult {
+  name: string;
+  result: string;
+  isError: boolean;
+}
+
+interface AIResponse {
+  aiResponse: string;
+  toolCalls?: ToolCallResult[];
 }
 
 export class VisualAIService {
@@ -55,8 +66,9 @@ export class VisualAIService {
     return response.json();
   }
 
-  static async getResponse(text: string, imageData: string | null = null): Promise<string> {
+  static async getResponse(text: string, imageData: string | null = null): Promise<AIResponse> {
     try {
+      // Create user message with both text and image if available
       const userMessage: Message = {
         role: 'user',
         content: imageData ? [
@@ -76,11 +88,13 @@ export class VisualAIService {
       this.conversationHistory.push(userMessage);
 
       let result;
+      let toolCallResults: ToolCallResult[] = [];
+      let hasSuccessfulToolCall = false;
+
       try {
         result = await this.makeGroqRequest(this.conversationHistory);
       } catch (error) {
         console.error('Initial Groq API call failed:', error);
-        // If the error is due to tool calls, try again without tools
         if (error.message.includes('400')) {
           console.log('Retrying without tools...');
           result = await this.makeGroqRequest(this.conversationHistory, false);
@@ -91,40 +105,44 @@ export class VisualAIService {
 
       let aiResponse = result.choices[0].message.content;
 
-      // Handle tool calls if present
       if (result.choices[0].message.tool_calls) {
         const toolCalls = result.choices[0].message.tool_calls;
         
         try {
-          // Execute tool calls sequentially
           for (const toolCall of toolCalls) {
-            // Add assistant's intention to use tool
             this.conversationHistory.push({
               role: 'assistant',
               content: `Let me check ${toolCall.function.name}...`
             });
 
-            // Execute the tool
             const toolResult = await toolRegistry.executeToolCall(toolCall);
 
-            // Add tool result to conversation with the required name property
-            this.conversationHistory.push({
-              role: 'function',
-              name: toolCall.function.name, // Add the tool's name
-              content: toolResult.isError ? `Error: ${toolResult.result}` : toolResult.result
+            toolCallResults.push({
+              name: toolCall.function.name,
+              result: toolResult.result,
+              isError: toolResult.isError
             });
 
-            // Get intermediate response if needed
-            if (toolResult.isError) {
-              const errorResponse = await this.makeGroqRequest(this.conversationHistory, false);
-              aiResponse = errorResponse.choices[0].message.content;
-              break; // Stop processing more tools if there's an error
+            if (!toolResult.isError) {
+              hasSuccessfulToolCall = true;
             }
+
+            this.conversationHistory.push({
+              role: 'function',
+              name: toolCall.function.name,
+              content: toolResult.isError ? `Error: ${toolResult.result}` : toolResult.result
+            });
           }
 
-          // Get final response incorporating all tool results
-          if (!this.conversationHistory.some(msg => msg.content.includes('Error:'))) {
-            const finalResult = await this.makeGroqRequest(this.conversationHistory, false);
+          // Only get final response if we had at least one successful tool call
+          if (hasSuccessfulToolCall) {
+            const finalResult = await this.makeGroqRequest([
+              {
+                role: 'system',
+                content: `${SYSTEM_PROMPT}\n\nIMPORTANT: Tool calls have just provided valid information. Use this information in your response and do NOT say you can't see or don't have the information.`
+              },
+              ...this.conversationHistory.slice(-3)
+            ], false);
             aiResponse = finalResult.choices[0].message.content;
           }
         } catch (error) {
@@ -141,12 +159,15 @@ export class VisualAIService {
       // Keep conversation history manageable
       if (this.conversationHistory.length > 10) {
         this.conversationHistory = [
-          this.conversationHistory[0], // Keep system prompt
-          ...this.conversationHistory.slice(-4) // Keep last 4 exchanges
+          this.conversationHistory[0],
+          ...this.conversationHistory.slice(-4)
         ];
       }
 
-      return aiResponse;
+      return {
+        aiResponse,
+        toolCalls: toolCallResults.length > 0 ? toolCallResults : undefined
+      };
     } catch (error) {
       console.error('Error getting AI response:', error);
       const errorMessage = error.message || 'Unknown error occurred';
