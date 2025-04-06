@@ -10,3 +10,14 @@ flask-socketio
 groq
 python-dotenv
 Pillow==10.0.0
+groq
+python-dotenv
+flask
+flask-socketio
+groq
+python-dotenv
+groq==0.22.0
+flask
+flask-socketio
+groq
+python-dotenv
