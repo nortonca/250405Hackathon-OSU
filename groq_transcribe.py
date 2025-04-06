@@ -31,32 +31,38 @@ def encode_image(image_path):
 def get_ai_response(transcription, image_path=None):
     # Create message content
     if image_path and os.path.exists(image_path):
-        # Using the vision model for image analysis
+        # Using the vision model for image analysis - create a fresh conversation without system message
         base64_image = encode_image(image_path)
         
-        message_content = [
-            {"type": "text", "text": transcription},
+        # Create a fresh conversation for the vision model without system message
+        vision_messages = [
             {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_image}",
-                },
-            },
+                "role": "user", 
+                "content": [
+                    {"type": "text", "text": transcription},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}",
+                        },
+                    },
+                ]
+            }
         ]
-        
-        # Add user message to conversation history
-        conversation_history.append({"role": "user", "content": message_content})
         
         # Use vision model for image + text
         completion = client.chat.completions.create(
             model="llama-3.2-11b-vision-preview",
-            messages=conversation_history,
+            messages=vision_messages,
             temperature=0.7,
             max_completion_tokens=1024,
             top_p=1,
             stream=False,
             stop=None,
         )
+        
+        # Add the exchange to conversation history as plain text for future context
+        conversation_history.append({"role": "user", "content": transcription + " [Image analysis requested]"})
     else:
         # Regular text-only conversation
         conversation_history.append({"role": "user", "content": transcription})
