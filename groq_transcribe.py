@@ -29,7 +29,7 @@ def get_vision_response(transcription, current_image_data, image_history=None):
     else:
         current_base64_image = current_image_data
 
-    # Create content array for user message
+    # Create content array for user message - only including current image
     user_content = [
         {"type": "text", "text": transcription},
         {
@@ -47,44 +47,29 @@ def get_vision_response(transcription, current_image_data, image_history=None):
     if image_history and len(image_history) > 0:
         system_message = {
             "role": "system",
-            "content": f"You are analyzing a conversation with {len(image_history) + 1} images. "
-                       f"The user has shared {len(image_history)} previous images and is now showing you a new image. "
-                       f"Consider both the current image and context from previous images when responding."
+            "content": f"You are analyzing a conversation with multiple image contexts. "
+                       f"The user has shared previous images that I'll describe textually and is now showing you a new image. "
+                       f"Consider both the current image and the context I provide about previous images when responding."
         }
         vision_messages.append(system_message)
     
-    # Add previous images (oldest to newest) to provide context
+    # Add previous images as textual descriptions to provide context
     if image_history and len(image_history) > 0:
-        # Create a context message with previous images
-        previous_images_content = [{"type": "text", "text": "Here are my previous images for context:"}]
+        # Create a text-only description of previous images
+        history_text = f"Context: The user has shared {len(image_history)} previous images. "
+        history_text += "I don't have access to these images right now but the conversation has built upon this context. "
+        history_text += "The current image is a new capture showing what the user is currently looking at or wants to discuss."
         
-        # Add each previous image
-        for i, img in enumerate(image_history):
-            if img.get('data'):
-                img_data = img['data']
-                # Extract base64 if needed
-                if ',' in img_data:
-                    img_base64 = img_data.split(',', 1)[1]
-                else:
-                    img_base64 = img_data
-                
-                previous_images_content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{img_base64}",
-                    }
-                })
-        
-        # Add context message with previous images
+        # Add context message with previous image descriptions
         vision_messages.append({
             "role": "user",
-            "content": previous_images_content
+            "content": [{"type": "text", "text": history_text}]
         })
         
         # Add assistant acknowledgment
         vision_messages.append({
             "role": "assistant",
-            "content": "I've received your previous images and will keep them in mind when analyzing your new image and question."
+            "content": "I understand you've shown previous images. I'll analyze your new image in that context."
         })
 
     # Add current user message with new image
