@@ -34,13 +34,16 @@ def get_llama_response(transcription, conversation_history=None):
     
     # Get response from Groq API
     completion = client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        # Required parameters
         messages=conversation_history,
-        temperature=0.7,
+        model="llama-3.3-70b-versatile",
+        
+        # Optional parameters
+        temperature=0.5,
         max_completion_tokens=1024,
         top_p=1,
-        stream=False,
         stop=None,
+        stream=False,
     )
     
     # Extract response text

@@ -45,15 +45,18 @@ def get_vision_response(transcription, image_data):
         }
     ]
 
-    # Use vision model for image + text
+    # Use vision model for image + text 
     completion = client.chat.completions.create(
-        model="llama-3.2-11b-vision-preview",
+        # Required parameters
         messages=vision_messages,
-        temperature=0.7,
+        model="llama-3.2-11b-vision-preview",
+        
+        # Optional parameters
+        temperature=0.5,
         max_completion_tokens=1024,
         top_p=1,
-        stream=False,
         stop=None,
+        stream=False,
     )
 
     # Extract and return vision model response
