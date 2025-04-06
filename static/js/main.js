@@ -125,6 +125,19 @@ const ImageProcessor = {
     }
 };
 
-// Export utilities for use in main application
+// Export utilities for use in main application - make sure they're globally available
 window.AudioProcessor = AudioProcessor;
 window.ImageProcessor = ImageProcessor;
+
+// For compatibility with older browsers
+if (typeof AudioProcessor === 'undefined') {
+    console.log("Creating global AudioProcessor");
+    globalThis.AudioProcessor = AudioProcessor;
+}
+if (typeof ImageProcessor === 'undefined') {
+    console.log("Creating global ImageProcessor");
+    globalThis.ImageProcessor = ImageProcessor;
+}
+
+// Log to confirm the script loaded
+console.log("Audio and Image Processing utilities loaded");

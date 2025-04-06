@@ -74,6 +74,9 @@
         </footer>
     </div>
 
+    <!-- Main JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Socket.IO for real-time communication
@@ -239,6 +242,13 @@
                                 const currentImageKey = localStorage.getItem('current-image-key');
                                 if (currentImageKey) {
                                     imageData = localStorage.getItem(currentImageKey);
+                                }
+
+                                // Check if AudioProcessor exists before using it
+                                if (typeof AudioProcessor === 'undefined') {
+                                    console.error("AudioProcessor is not defined. Make sure main.js is loaded correctly.");
+                                    updateStatus('Error: Audio processing is not available', true);
+                                    return;
                                 }
 
                                 // Process audio with conversation history
