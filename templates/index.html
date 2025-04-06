@@ -43,7 +43,7 @@
                             <video id="camera-feed" autoplay playsinline class="w-full rounded-lg"></video>
                             <div id="camera-status" class="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded-full opacity-75">Camera inactive</div>
                         </div>
-                        
+
                         <!-- Camera controls -->
                         <div class="flex mt-2 space-x-2">
                             <button id="start-camera" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
@@ -64,7 +64,7 @@
                                 <canvas id="captured-frame" class="max-h-48 rounded-lg mx-auto object-contain border border-gray-300"></canvas>
                             </div>
                         </div>
-                        
+
                         <!-- Recent Images History -->
                         <div id="image-history-container" class="mt-4">
                             <p class="text-sm font-medium mb-2">Recent Images (<span id="image-history-count">0</span>/3):</p>
@@ -104,7 +104,7 @@
 
     <!-- Main JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Socket.IO for real-time communication
@@ -144,15 +144,15 @@
             const cameraFeed = document.getElementById('camera-feed');
             const capturedFrame = document.getElementById('captured-frame');
             const cameraStatus = document.getElementById('camera-status');
-            
+
             // Initialize camera manager
             CameraManager.init('camera-feed', 'captured-frame');
-            
+
             function updateStatus(message, isError = false) {
                 statusDiv.textContent = message;
                 statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
             }
-            
+
             function updateCameraStatus(message) {
                 cameraStatus.textContent = message;
             }
@@ -186,7 +186,7 @@
                     updateStatus('Failed to start camera. Please check permissions.', true);
                 }
             });
-            
+
             stopCameraBtn.addEventListener('click', function() {
                 CameraManager.stopCamera();
                 stopCameraBtn.classList.add('hidden');
@@ -203,7 +203,7 @@
                             updateStatus('Speech detected! Recording...');
                             console.log("Speech start detected");
                             isRecording = true;
-                            
+
                             // Capture camera frame if camera is active
                             if (CameraManager.isActive) {
                                 CameraManager.captureFrame();
@@ -362,6 +362,22 @@
                 .catch(err => {
                     console.log("Camera requires manual activation", err);
                 });
+
+                // Initialize UI elements on load
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize CameraManager and ImageProcessor if needed
+                if (!CameraManager.canvas || !CameraManager.context) {
+                    CameraManager.init('camera-feed', 'captured-frame');
+                }
+
+                // Initialize image history UI
+                if (window.ImageProcessor) {
+                    window.ImageProcessor.updateImageHistoryUI();
+                    console.log("Image history UI initialized");
+                } else {
+                    console.error("ImageProcessor not available");
+                }
+            });
         });
     </script>
 </body>

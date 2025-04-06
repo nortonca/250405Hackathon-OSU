@@ -63,6 +63,11 @@ const CameraManager = {
             const capturedImage = this.canvas.toDataURL('image/jpeg');
             this.capturedFrame = capturedImage;
             
+            // Store the image in history
+            if (window.ImageProcessor) {
+                window.ImageProcessor.storeImage(capturedImage);
+            }
+            
             // Make the canvas container visible
             document.getElementById('captured-frame-container').classList.remove('hidden');
             
@@ -199,7 +204,14 @@ const ImageProcessor = {
     // Store image locally and manage image history
     storeImage: async function(imageFile, prefix = 'voice-assistant-image-') {
         try {
-            const base64Image = await this.fileToBase64(imageFile);
+            let base64Image;
+            
+            // Handle both File objects and base64 strings
+            if (typeof imageFile === 'string') {
+                base64Image = imageFile;
+            } else {
+                base64Image = await this.fileToBase64(imageFile);
+            }
             
             // Check size for localStorage (~5MB limit)
             if (base64Image.length > 5000000) {
