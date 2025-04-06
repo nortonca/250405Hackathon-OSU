@@ -67,6 +67,11 @@
                     <div class="mt-4">
                         <div class="flex items-center justify-between">
                             <h4 class="text-sm font-medium text-gray-700">Image Context History</h4>
+
+                <button id="clear-context" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition">
+                    Clear Context
+                </button>
+
                             <span id="context-count" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">0 images</span>
                         </div>
                         <p class="text-xs text-gray-500 mb-2">Previous images used for context</p>
@@ -392,8 +397,40 @@
                 stopButton.classList.add('hidden');
                 startButton.classList.remove('hidden');
                 updateStatus('Voice detection stopped');
+                
+                // Clear conversation and image context
+                clearAllContext();
             });
+            
+            // Function to clear all context
+            function clearAllContext() {
+                // Clear conversation history
+                conversationHistory = [
+                    {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
+                ];
+                
+                // Clear image history
+                ImageHistoryManager.clearAllHistory();
+                
+                // Clear captured frame
+                CameraManager.clearCapturedFrame();
+                
+                // Update image context count
+                updateImageContextInfo();
+                
+                // Clear transcript container
+                transcriptContainer.innerHTML = '<div class="text-gray-500 text-center">Transcriptions will appear here</div>';
+                
+                // Show status notification
+                updateStatus('All conversation and image context cleared');
+            }
 
+            // Set up clear context button
+            const clearContextBtn = document.getElementById('clear-context');
+            clearContextBtn.addEventListener('click', () => {
+                clearAllContext();
+            });
+            
             // Auto-start camera if permissions are already granted
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {

@@ -75,6 +75,18 @@ const CameraManager = {
     // Get the last captured frame
     getLastFrame: function() {
         return this.capturedFrame;
+    },
+    
+    // Clear last captured frame
+    clearCapturedFrame: function() {
+        this.capturedFrame = null;
+        const container = document.getElementById('captured-frame-container');
+        if (container) {
+            container.classList.add('hidden');
+        }
+        if (this.canvas) {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
     }
 };
 
@@ -147,6 +159,21 @@ const ImageHistoryManager = {
                 localStorage.removeItem(keys[i]);
             }
         }
+    },
+    
+    // Clear all image history
+    clearAllHistory: function() {
+        // Remove current image key
+        localStorage.removeItem('current-image-key');
+        
+        // Remove all history images
+        const keys = this.getHistoryKeys();
+        keys.forEach(key => {
+            localStorage.removeItem(key);
+        });
+        
+        // Update UI
+        this.renderInUI('image-history-container');
     },
     
     // Render image history in UI
