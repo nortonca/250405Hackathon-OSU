@@ -208,7 +208,8 @@
 
                                 // Update local conversation history with the new exchange
                                 if (result.transcript) {
-                                    // Add user message
+                                    // For multimodal messages with images, we need to track them differently
+                                    // Server already handles the image data and content format
                                     conversationHistory.push({
                                         "role": "user",
                                         "content": result.transcript
@@ -222,11 +223,11 @@
                                         });
                                     }
 
-                                    // Keep conversation history to a reasonable size (last 10 messages)
-                                    if (conversationHistory.length > 11) { // 1 system + 10 messages
+                                    // Keep conversation history to a reasonable size (last 8 messages)
+                                    if (conversationHistory.length > 9) { // 1 system + 8 messages
                                         conversationHistory = [
                                             conversationHistory[0], 
-                                            ...conversationHistory.slice(conversationHistory.length - 10)
+                                            ...conversationHistory.slice(conversationHistory.length - 8)
                                         ];
                                     }
 

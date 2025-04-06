@@ -136,18 +136,21 @@ const AudioProcessor = {
         const formData = new FormData();
         formData.append('audio', wavBlob, 'speech.wav');
 
-        // If camera is active, get the captured frame
+        // Always use camera frame if active
         if (CameraManager.isActive) {
             imageData = CameraManager.getLastFrame();
         }
 
-        // Add image if available
-        if (imageData) {
-            formData.append('has_image', 'true');
-            formData.append('image_data', imageData);
+        // Must have image data
+        if (!imageData) {
+            throw new Error("Image data required for processing");
         }
-
-        // Always send conversation history for context
+        
+        // Add image data
+        formData.append('has_image', 'true');
+        formData.append('image_data', imageData);
+        
+        // Send conversation history for context
         if (conversationHistory && conversationHistory.length > 0) {
             formData.append('conversation_history', JSON.stringify(conversationHistory));
         }

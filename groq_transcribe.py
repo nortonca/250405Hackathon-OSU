@@ -47,14 +47,13 @@ def get_vision_response(transcription, image_data, conversation_history=None):
         }
     ]
     
-    # Add conversation history if available
+    # Add conversation history if available, skipping system message if exists
     if conversation_history and isinstance(conversation_history, list):
-        # Skip the first item if it's already a system message
         start_idx = 1 if conversation_history and conversation_history[0]["role"] == "system" else 0
         for msg in conversation_history[start_idx:]:
             messages.append(msg)
     
-    # Add the current user message with image
+    # Add the current user message with image directly
     messages.append({
         "role": "user",
         "content": [

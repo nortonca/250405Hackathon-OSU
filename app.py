@@ -32,13 +32,10 @@ def transcribe():
     audio_file.save(temp_path)
 
     try:
-        # 1. Transcribe audio
+        # 1. Transcribe audio directly
         transcript = transcribe_audio(temp_path)
-
-        # 2. Send transcription to client
-        socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
-
-        # 3. Get conversation history from client if available
+        
+        # 2. Get conversation history from client if available
         conversation_history = []
         if 'conversation_history' in request.form:
             try:
@@ -46,24 +43,28 @@ def transcribe():
             except Exception as e:
                 print(f"Error parsing conversation history: {str(e)}")
 
-        # 4. Process with vision model. Error if no image.
+        # 3. Process with vision model
         has_image = request.form.get('has_image') == 'true'
         if has_image and 'image_data' in request.form:
             image_data = request.form.get('image_data')
+            
+            # 4. Send transcript to client first for immediate feedback
+            socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
+            
+            # 5. Pass transcription directly to vision model
             ai_response = get_vision_response(transcript, image_data, conversation_history)
+            
+            # 6. Send AI response to client
+            socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
+            
+            # 7. Return success to complete the request
+            return jsonify({
+                'success': True,
+                'transcript': transcript,
+                'response': ai_response
+            }), 200
         else:
             return jsonify({'error':'Image data required for processing'}), 400
-
-
-        # 5. Send AI response to client
-        socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
-
-        # 6. Return success to complete the request
-        return jsonify({
-            'success': True,
-            'transcript': transcript,
-            'response': ai_response
-        }), 200
     except Exception as e:
         print(f"Transcription pipeline error: {str(e)}")
         socketio.emit('transcription_error', {'error': str(e)})
