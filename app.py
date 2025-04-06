@@ -31,29 +31,36 @@ def transcribe():
     audio_file.save(temp_path)
 
     try:
-        # Call the transcription function
+        # Process everything in a single pipeline
+        # 1. Transcribe audio
         transcript = transcribe_audio(temp_path)
-
-        # Broadcast the transcription result to all connected clients
+        
+        # 2. Send transcription to client
         socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
-
-        # Check if we have an image from the client
+        
+        # 3. Process with appropriate model
         has_image = request.form.get('has_image') == 'true'
-
+        
         if has_image and 'image_data' in request.form:
-            # Use vision model with client-provided image
+            # Vision model path with client-provided image
             image_data = request.form.get('image_data')
             ai_response = get_vision_response(transcript, image_data)
         else:
             # Regular text-only conversation with Llama
             ai_response = get_llama_response(transcript)
-
-        # Broadcast the AI response
+        
+        # 4. Send AI response to client
         socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
-
-        return jsonify({'success': True}), 200
+        
+        # 5. Return success to complete the request
+        return jsonify({
+            'success': True,
+            'transcript': transcript,
+            'response': ai_response
+        }), 200
     except Exception as e:
-        print(f"Transcription error: {str(e)}")
+        print(f"Transcription pipeline error: {str(e)}")
+        socketio.emit('transcription_error', {'error': str(e)})
         return jsonify({'error': str(e)}), 500
     finally:
         # Clean up the temporary file

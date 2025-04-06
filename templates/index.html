@@ -224,43 +224,11 @@
                             isRecording = true;
                         },
                         onSpeechEnd: async (audio) => {
-                            updateStatus('Processing speech...');
-                            console.log("Speech ended, sending for transcription");
+                            console.log("Speech ended, processing in pipeline");
                             isRecording = false;
-
-                            // Convert Float32Array to WAV and send to server
-                            const wavBlob = await float32ArrayToWav(audio);
-                            const formData = new FormData();
-                            formData.append('audio', wavBlob, 'speech.wav');
                             
-                            // Check if we have a current image to send with the audio
-                            const currentImageKey = localStorage.getItem('current-image-key');
-                            if (currentImageKey) {
-                                const base64Image = localStorage.getItem(currentImageKey);
-                                if (base64Image) {
-                                    // Add the base64 image to form data
-                                    formData.append('has_image', 'true');
-                                    formData.append('image_data', base64Image);
-                                }
-                            }
-
-                            // Optimized for faster sending - use XMLHttpRequest for potential performance benefits
-                            const xhr = new XMLHttpRequest();
-                            xhr.open('POST', '/transcribe', true);
-                            xhr.onload = function() {
-                                if (xhr.status === 200) {
-                                    console.log("Audio sent successfully");
-                                    updateStatus('Ready to detect voice');
-                                } else {
-                                    console.error("Error sending audio:", xhr.statusText);
-                                    updateStatus('Error sending audio', true);
-                                }
-                            };
-                            xhr.onerror = function() {
-                                console.error("Request failed");
-                                updateStatus('Error sending audio', true);
-                            };
-                            xhr.send(formData);
+                            // Use the unified audio processing pipeline
+                            await processAudioPipeline(audio);
                         }
                     });
                     return true;
@@ -321,6 +289,56 @@
             function writeString(view, offset, string) {
                 for (let i = 0; i < string.length; i++) {
                     view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+            
+            // Function to handle the complete audio processing pipeline
+            async function processAudioPipeline(audioData) {
+                updateStatus('Processing audio pipeline...');
+                
+                // 1. Convert audio to WAV format
+                const wavBlob = await float32ArrayToWav(audioData);
+                
+                // 2. Create FormData with all necessary components
+                const formData = new FormData();
+                formData.append('audio', wavBlob, 'speech.wav');
+                
+                // 3. Check if we have an image to include
+                const currentImageKey = localStorage.getItem('current-image-key');
+                let hasImage = false;
+                
+                if (currentImageKey) {
+                    const base64Image = localStorage.getItem(currentImageKey);
+                    if (base64Image) {
+                        formData.append('has_image', 'true');
+                        formData.append('image_data', base64Image);
+                        hasImage = true;
+                    }
+                }
+                
+                // 4. Display user's speech in the transcript area (will be updated with actual text later)
+                addTranscript("Processing your audio...", "user");
+                
+                // 5. Send everything to server in a single request
+                try {
+                    const response = await fetch('/transcribe', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server responded with ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Request was successful, reset status
+                    updateStatus('Ready to detect voice');
+                    
+                    console.log("Audio processing pipeline completed successfully");
+                } catch (error) {
+                    console.error("Error in audio processing pipeline:", error);
+                    updateStatus('Error processing audio', true);
                 }
             }
 
