@@ -1,0 +1,17 @@
+Image uploaded: 
+Object {image_url: "/static/uploads/04f707e0-b704-4f65-9eed-643a5d73c4d5_86AB1D9D-9AD4-42AD-99B3-D0A4DBCF3B90.jpg", message: "Image uploaded successfully"}
+[VAD] initializing vad
+2025-04-05 17:38:02.630300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '140'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.630800 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '131'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.630900 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '139'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.631200 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '136'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.631500 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '134'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.631700 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '628'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.631800 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '625'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.631900 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '623'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.632000 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '629'. It is not used by any node and should be removed from the model.
+2025-04-05 17:38:02.632000 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '620'. It is not used by any node and should be removed from the model.
+[VAD] vad is initialized
+Speech start detected
+Speech ended, sending for transcription
+Error sending audio: Internal Server Error
