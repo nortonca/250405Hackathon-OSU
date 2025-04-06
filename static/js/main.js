@@ -1,1 +1,0 @@
-// This file is no longer needed as all functionality is in index.html
