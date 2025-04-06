@@ -1,4 +1,83 @@
 
+// Camera Management Utilities
+const CameraManager = {
+    videoElement: null,
+    stream: null,
+    capturedFrame: null,
+    canvas: null,
+    context: null,
+    isActive: false,
+    
+    // Initialize camera manager
+    init: function(videoElementId, canvasElementId) {
+        this.videoElement = document.getElementById(videoElementId);
+        this.canvas = document.getElementById(canvasElementId);
+        this.context = this.canvas.getContext('2d');
+        this.capturedFrame = null;
+    },
+    
+    // Start camera stream
+    startCamera: async function() {
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user"
+                }, 
+                audio: false 
+            });
+            
+            this.videoElement.srcObject = this.stream;
+            this.isActive = true;
+            return true;
+        } catch (error) {
+            console.error("Error accessing camera:", error);
+            return false;
+        }
+    },
+    
+    // Stop camera stream
+    stopCamera: function() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.videoElement.srcObject = null;
+            this.isActive = false;
+        }
+    },
+    
+    // Capture current frame
+    captureFrame: function() {
+        if (!this.isActive || !this.videoElement) return null;
+        
+        // Set canvas size to match video dimensions
+        const width = this.videoElement.videoWidth;
+        const height = this.videoElement.videoHeight;
+        
+        if (width && height) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+            this.context.drawImage(this.videoElement, 0, 0, width, height);
+            
+            // Get base64 representation of the image
+            const capturedImage = this.canvas.toDataURL('image/jpeg');
+            this.capturedFrame = capturedImage;
+            
+            // Make the canvas container visible
+            document.getElementById('captured-frame-container').classList.remove('hidden');
+            
+            return capturedImage;
+        }
+        
+        return null;
+    },
+    
+    // Get the last captured frame
+    getLastFrame: function() {
+        return this.capturedFrame;
+    }
+};
+
 // Audio Processing Utilities
 const AudioProcessor = {
     // Convert Float32Array to WAV format
@@ -57,6 +136,11 @@ const AudioProcessor = {
         // Create form data
         const formData = new FormData();
         formData.append('audio', wavBlob, 'speech.wav');
+        
+        // If camera is active, get the captured frame
+        if (CameraManager.isActive) {
+            imageData = CameraManager.getLastFrame();
+        }
         
         // Add image if available
         if (imageData) {

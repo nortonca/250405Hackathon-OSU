@@ -32,33 +32,34 @@
                     Stop Listening
                 </button>
 
-                <!-- Image upload section -->
+                <!-- Live camera section -->
                 <div class="mt-4 p-4 border border-gray-200 rounded-lg">
-                    <h3 class="text-lg font-medium mb-2">Upload an Image</h3>
-                    <p class="text-sm text-gray-500 mb-3">Upload an image for the AI to analyze</p>
+                    <h3 class="text-lg font-medium mb-2">Camera Feed</h3>
+                    <p class="text-sm text-gray-500 mb-3">Your camera will automatically capture when you speak</p>
 
-                    <div class="flex items-center justify-center w-full">
-                        <label for="image-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                <svg class="w-8 h-8 mb-3 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                                </svg>
-                                <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                                <p class="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 10MB)</p>
-                            </div>
-                            <input id="image-upload" type="file" accept="image/*" class="hidden" />
-                        </label>
+                    <div class="flex flex-col items-center justify-center w-full">
+                        <!-- Live video feed -->
+                        <div class="relative w-full">
+                            <video id="camera-feed" autoplay playsinline class="w-full rounded-lg"></video>
+                            <div id="camera-status" class="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded-full opacity-75">Camera inactive</div>
+                        </div>
+                        
+                        <!-- Camera controls -->
+                        <div class="flex mt-2 space-x-2">
+                            <button id="start-camera" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                Start Camera
+                            </button>
+                            <button id="stop-camera" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm hidden">
+                                Stop Camera
+                            </button>
+                        </div>
                     </div>
 
-                    <div id="image-preview-container" class="mt-4 hidden">
-                        <p class="text-sm font-medium mb-2">Preview:</p>
+                    <!-- Last captured frame -->
+                    <div id="captured-frame-container" class="mt-4 hidden">
+                        <p class="text-sm font-medium mb-2">Last Captured Frame:</p>
                         <div class="relative">
-                            <img id="image-preview" src="#" alt="Preview" class="max-h-64 rounded-lg mx-auto object-contain" />
-                            <button id="remove-image" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                            <canvas id="captured-frame" class="max-h-48 rounded-lg mx-auto object-contain border border-gray-300"></canvas>
                         </div>
                     </div>
                 </div>
@@ -85,16 +86,9 @@
             const stopButton = document.getElementById('stop-button');
             const statusDiv = document.getElementById('status');
             const transcriptContainer = document.getElementById('transcript-container');
-            const imageUpload = document.getElementById('image-upload');
-            const imagePreviewContainer = document.getElementById('image-preview-container');
-            const imagePreview = document.getElementById('image-preview');
-            const removeImageButton = document.getElementById('remove-image');
-            const dropZone = document.querySelector('label[for="image-upload"]');
-
             let vadInstance = null;
             let audioChunks = [];
             let isRecording = false;
-            let currentImageFile = null;
 
             // Add conversation history tracking
             let conversationHistory = [
@@ -117,9 +111,23 @@
                 console.log('Image uploaded:', data);
             });
 
+            // Camera variables and elements
+            const startCameraBtn = document.getElementById('start-camera');
+            const stopCameraBtn = document.getElementById('stop-camera');
+            const cameraFeed = document.getElementById('camera-feed');
+            const capturedFrame = document.getElementById('captured-frame');
+            const cameraStatus = document.getElementById('camera-status');
+            
+            // Initialize camera manager
+            CameraManager.init('camera-feed', 'captured-frame');
+            
             function updateStatus(message, isError = false) {
                 statusDiv.textContent = message;
                 statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
+            }
+            
+            function updateCameraStatus(message) {
+                cameraStatus.textContent = message;
             }
 
             function addTranscript(text, type = 'user') {
@@ -140,88 +148,25 @@
                 transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
             }
 
-            // Image upload handling
-            imageUpload.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const file = this.files[0];
-
-                    // Check if file is an image
-                    if (!file.type.match('image.*')) {
-                        updateStatus('Please select an image file', true);
-                        return;
-                    }
-
-                    // Check file size (max 5MB for client storage)
-                    if (file.size > 5 * 1024 * 1024) {
-                        updateStatus('Image is too large (max 5MB for client storage)', true);
-                        return;
-                    }
-
-                    currentImageFile = file;
-
-                    // Show preview
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        imagePreview.src = e.target.result;
-                        imagePreviewContainer.classList.remove('hidden');
-                    }
-                    reader.readAsDataURL(file);
-
-                    // Process image locally instead of uploading
-                    handleImageLocally(file);
+            // Camera handling
+            startCameraBtn.addEventListener('click', async function() {
+                if (await CameraManager.startCamera()) {
+                    startCameraBtn.classList.add('hidden');
+                    stopCameraBtn.classList.remove('hidden');
+                    updateCameraStatus('Camera active');
+                    updateStatus('Camera started successfully');
+                } else {
+                    updateStatus('Failed to start camera. Please check permissions.', true);
                 }
             });
-
-            // Clear local image when removing it from UI
-            removeImageButton.addEventListener('click', function() {
-                imagePreview.src = '';
-                imagePreviewContainer.classList.add('hidden');
-                imageUpload.value = '';
-                currentImageFile = null;
-
-                // Clear current image reference in localStorage
-                localStorage.removeItem('current-image-key');
-
-                updateStatus('Image removed');
+            
+            stopCameraBtn.addEventListener('click', function() {
+                CameraManager.stopCamera();
+                stopCameraBtn.classList.add('hidden');
+                startCameraBtn.classList.remove('hidden');
+                updateCameraStatus('Camera inactive');
+                updateStatus('Camera stopped');
             });
-
-            // Remove image
-            removeImageButton.addEventListener('click', function() {
-                imagePreview.src = '';
-                imagePreviewContainer.classList.add('hidden');
-                imageUpload.value = '';
-                currentImageFile = null;
-                updateStatus('Image removed');
-            });
-
-            // Function to handle image locally without server upload
-            function handleImageLocally(imageFile) {
-                updateStatus('Processing image locally...');
-
-                // Convert the image to base64 for local processing
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const base64Image = e.target.result;
-                    // Store image in localStorage (with size check)
-                    if (base64Image.length > 5000000) { // ~5MB limit
-                        updateStatus('Image too large for local storage', true);
-                        return;
-                    }
-
-                    // Store image in localStorage with timestamp as key
-                    const imageKey = 'voice-assistant-image-' + Date.now();
-                    localStorage.setItem(imageKey, base64Image);
-
-                    // Store current image key for reference when sending voice
-                    localStorage.setItem('current-image-key', imageKey);
-
-                    updateStatus('Image stored locally');
-
-                    // Notify socket that we have a local image ready
-                    socket.emit('local_image_ready', true);
-                };
-                reader.readAsDataURL(imageFile);
-            }
 
             async function initVAD() {
                 try {
@@ -231,6 +176,12 @@
                             updateStatus('Speech detected! Recording...');
                             console.log("Speech start detected");
                             isRecording = true;
+                            
+                            // Capture camera frame if camera is active
+                            if (CameraManager.isActive) {
+                                CameraManager.captureFrame();
+                                console.log("Frame captured at speech start");
+                            }
                         },
                         onSpeechEnd: async (audio) => {
                             console.log("Speech ended, processing in pipeline");
@@ -375,46 +326,15 @@
                 updateStatus('Voice detection stopped');
             });
 
-            // Add drag and drop functionality for images
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, highlight, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, unhighlight, false);
-            });
-
-            function highlight() {
-                dropZone.classList.add('bg-gray-200');
-            }
-
-            function unhighlight() {
-                dropZone.classList.remove('bg-gray-200');
-            }
-
-            dropZone.addEventListener('drop', handleDrop, false);
-
-            function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-
-                if (files && files.length) {
-                    imageUpload.files = files;
-                    // Trigger change event
-                    const event = new Event('change');
-                    imageUpload.dispatchEvent(event);
-                }
-            }
+            // Auto-start camera if permissions are already granted
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    stream.getTracks().forEach(track => track.stop());
+                    startCameraBtn.click();
+                })
+                .catch(err => {
+                    console.log("Camera requires manual activation", err);
+                });
         });
     </script>
 </body>
