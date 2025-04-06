@@ -2,6 +2,7 @@
 .env.*
 venv/
 *.wav
+static/output.mp3
 __pycache__/
 *.pyc
 *.pyo
