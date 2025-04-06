@@ -1,144 +1,341 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Assistant Control Panel</title>
-    <!-- Bootstrap CSS from Replit-themed CDN -->
-    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/custom.css">
+    <title>Voice Transcription</title>
+    <!-- Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Socket.IO from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <!-- VAD (Voice Activity Detection) scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js"></script>
 </head>
-<body>
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-12 mb-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h1 class="mb-0"><i class="fas fa-microphone-alt me-2"></i> Voice Assistant</h1>
-                    <div>
-                        <button id="startBtn" class="btn btn-success me-2">
-                            <i class="fas fa-play me-1"></i> Start
-                        </button>
-                        <button id="stopBtn" class="btn btn-danger" disabled>
-                            <i class="fas fa-stop me-1"></i> Stop
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-600">Voice AI Assistant</h1>
+            <p class="text-center text-gray-600 mt-2">Speak to interact with the AI assistant in real-time</p>
+        </header>
 
-        <div class="row">
-            <!-- Status Card -->
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-heartbeat me-2"></i> Status</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Assistant Status
-                                <span id="assistantStatus" class="badge bg-secondary">Offline</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Server Connection
-                                <span id="serverStatus" class="badge bg-secondary">Disconnected</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Voice Detection
-                                <span id="vadStatus" class="badge bg-secondary">Idle</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Last Updated
-                                <span id="lastUpdated">Never</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+        <main class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
+            <div id="status" class="mb-4 p-3 bg-gray-100 rounded-lg text-center">
+                Ready to detect voice
             </div>
 
-            <!-- Conversation Card -->
-            <div class="col-md-8 mb-4">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-comments me-2"></i> Conversation History</h5>
-                        <button id="refreshConversationBtn" class="btn btn-sm btn-secondary">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
-                    <div class="card-body conversation-container">
-                        <div id="conversationHistory" class="conversation-history">
-                            <div class="text-center text-muted p-4">
-                                No conversation history yet
-                            </div>
+            <div class="flex flex-col space-y-4">
+                <button id="start-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">
+                    Start Listening
+                </button>
+                <button id="stop-button" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition hidden">
+                    Stop Listening
+                </button>
+
+                <!-- Live camera section -->
+                <div class="mt-4 p-4 border border-gray-200 rounded-lg">
+                    <h3 class="text-lg font-medium mb-2">Camera Feed</h3>
+                    <p class="text-sm text-gray-500 mb-3">Your camera will automatically capture when you speak</p>
+
+                    <div class="flex flex-col items-center justify-center w-full">
+                        <!-- Live video feed -->
+                        <div class="relative w-full">
+                            <video id="camera-feed" autoplay playsinline class="w-full rounded-lg"></video>
+                            <div id="camera-status" class="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded-full opacity-75">Camera inactive</div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Events Card -->
-        <div class="row">
-            <div class="col-12 mb-4">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i> Recent Events</h5>
-                        <div>
-                            <button id="clearEventsBtn" class="btn btn-sm btn-secondary me-2">
-                                Clear
+                        
+                        <!-- Camera controls -->
+                        <div class="flex mt-2 space-x-2">
+                            <button id="start-camera" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                Start Camera
                             </button>
-                            <div class="form-check form-switch d-inline-block">
-                                <input class="form-check-input" type="checkbox" id="autoScrollSwitch" checked>
-                                <label class="form-check-label" for="autoScrollSwitch">Auto-scroll</label>
-                            </div>
+                            <button id="stop-camera" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm hidden">
+                                Stop Camera
+                            </button>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div id="eventsContainer" class="events-container">
-                            <div class="text-center text-muted p-4">
-                                No events yet
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Debug Info Card -->
-        <div class="row">
-            <div class="col-12 mb-4">
-                <div class="card">
-                    <div class="card-header" data-bs-toggle="collapse" data-bs-target="#debugInfoContent" 
-                         aria-expanded="false" aria-controls="debugInfoContent" style="cursor: pointer;">
-                        <h5 class="mb-0">
-                            <i class="fas fa-bug me-2"></i> Debug Information
-                            <i class="fas fa-chevron-down float-end"></i>
-                        </h5>
-                    </div>
-                    <div id="debugInfoContent" class="collapse">
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>VAD Configuration</h6>
-                                    <pre id="vadConfig" class="bg-dark text-light p-2 rounded">No data</pre>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Server Connection</h6>
-                                    <pre id="serverConfig" class="bg-dark text-light p-2 rounded">No data</pre>
-                                </div>
-                            </div>
+                    <!-- Last captured frame -->
+                    <div id="captured-frame-container" class="mt-4 hidden">
+                        <p class="text-sm font-medium mb-2">Last Captured Frame:</p>
+                        <div class="relative">
+                            <canvas id="captured-frame" class="max-h-48 rounded-lg mx-auto object-contain border border-gray-300"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <div id="transcript-container" class="mt-6 h-64 overflow-y-auto border border-gray-200 rounded p-4">
+                <div class="text-gray-500 text-center">Transcriptions will appear here</div>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>© 2025 - Voice Transcription App</p>
+        </footer>
     </div>
 
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Custom JS -->
-    <script src="/static/js/app.js"></script>
+    <!-- Main JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Socket.IO for real-time communication
+            const socket = io();
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const statusDiv = document.getElementById('status');
+            const transcriptContainer = document.getElementById('transcript-container');
+            let vadInstance = null;
+            let audioChunks = [];
+            let isRecording = false;
+
+            // Add conversation history tracking
+            let conversationHistory = [
+                {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
+            ];
+
+            // Handle connection events
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+
+            socket.on('transcription_result', (data) => {
+                if (data.text) {
+                    addTranscript(data.text, data.type);
+                }
+            });
+
+            socket.on('image_uploaded', (data) => {
+                updateStatus('Image uploaded and ready for analysis');
+                console.log('Image uploaded:', data);
+            });
+
+            // Camera variables and elements
+            const startCameraBtn = document.getElementById('start-camera');
+            const stopCameraBtn = document.getElementById('stop-camera');
+            const cameraFeed = document.getElementById('camera-feed');
+            const capturedFrame = document.getElementById('captured-frame');
+            const cameraStatus = document.getElementById('camera-status');
+            
+            // Initialize camera manager
+            CameraManager.init('camera-feed', 'captured-frame');
+            
+            function updateStatus(message, isError = false) {
+                statusDiv.textContent = message;
+                statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
+            }
+            
+            function updateCameraStatus(message) {
+                cameraStatus.textContent = message;
+            }
+
+            function addTranscript(text, type = 'user') {
+                // Clear the placeholder if it's the first transcript
+                if (transcriptContainer.querySelector('.text-gray-500')) {
+                    transcriptContainer.innerHTML = '';
+                }
+
+                const transcriptDiv = document.createElement('div');
+                if (type === 'user') {
+                    transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded self-end';
+                    transcriptDiv.innerHTML = '<span class="font-semibold">You:</span> ' + text;
+                } else {
+                    transcriptDiv.className = 'mb-2 p-2 bg-green-50 rounded self-start';
+                    transcriptDiv.innerHTML = '<span class="font-semibold">AI:</span> ' + text;
+                }
+                transcriptContainer.appendChild(transcriptDiv);
+                transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+            }
+
+            // Camera handling
+            startCameraBtn.addEventListener('click', async function() {
+                if (await CameraManager.startCamera()) {
+                    startCameraBtn.classList.add('hidden');
+                    stopCameraBtn.classList.remove('hidden');
+                    updateCameraStatus('Camera active');
+                    updateStatus('Camera started successfully');
+                } else {
+                    updateStatus('Failed to start camera. Please check permissions.', true);
+                }
+            });
+            
+            stopCameraBtn.addEventListener('click', function() {
+                CameraManager.stopCamera();
+                stopCameraBtn.classList.add('hidden');
+                startCameraBtn.classList.remove('hidden');
+                updateCameraStatus('Camera inactive');
+                updateStatus('Camera stopped');
+            });
+
+            async function initVAD() {
+                try {
+                    // Set up VAD with optimized settings for faster response
+                    vadInstance = await vad.MicVAD.new({
+                        onSpeechStart: () => {
+                            updateStatus('Speech detected! Recording...');
+                            console.log("Speech start detected");
+                            isRecording = true;
+                            
+                            // Capture camera frame if camera is active
+                            if (CameraManager.isActive) {
+                                CameraManager.captureFrame();
+                                console.log("Frame captured at speech start");
+                            }
+                        },
+                        onSpeechEnd: async (audio) => {
+                            console.log("Speech ended, processing in pipeline");
+                            isRecording = false;
+
+                            try {
+                                // Get current image data if available
+                                let imageData = null;
+                                const currentImageKey = localStorage.getItem('current-image-key');
+                                if (currentImageKey) {
+                                    imageData = localStorage.getItem(currentImageKey);
+                                }
+
+                                // Check if AudioProcessor exists before using it
+                                if (typeof AudioProcessor === 'undefined') {
+                                    console.error("AudioProcessor is not defined. Make sure main.js is loaded correctly.");
+                                    updateStatus('Error: Audio processing is not available', true);
+                                    return;
+                                }
+
+                                // Process audio with conversation history
+                                const result = await AudioProcessor.processPipeline(audio, imageData, conversationHistory);
+
+                                // Update local conversation history with the new exchange
+                                if (result.transcript) {
+                                    // Add user message
+                                    conversationHistory.push({
+                                        "role": "user",
+                                        "content": result.transcript
+                                    });
+
+                                    // Add assistant response
+                                    if (result.response) {
+                                        conversationHistory.push({
+                                            "role": "assistant",
+                                            "content": result.response
+                                        });
+                                    }
+
+                                    // Keep conversation history to a reasonable size (last 10 messages)
+                                    if (conversationHistory.length > 11) { // 1 system + 10 messages
+                                        conversationHistory = [
+                                            conversationHistory[0], 
+                                            ...conversationHistory.slice(conversationHistory.length - 10)
+                                        ];
+                                    }
+
+                                    console.log("Updated conversation history:", conversationHistory);
+                                }
+                            } catch (error) {
+                                console.error("Error in audio processing:", error);
+                                updateStatus('Error: ' + error.message, true);
+                            }
+                        },
+                        onVADMisfire: () => {
+                            console.log("VAD misfire (not speech)");
+                        }
+                    });
+                    return true;
+                } catch (error) {
+                    console.error("Error initializing VAD:", error);
+                    updateStatus('Error initializing voice detection', true);
+                    return false;
+                }
+            }
+
+            // Function to convert Float32Array to WAV format
+            function float32ArrayToWav(audio) {
+                // The VAD outputs audio at 16kHz
+                const sampleRate = 16000;
+                const numChannels = 1;
+                const bitsPerSample = 16;
+
+                // Convert Float32Array to Int16Array
+                const int16Array = new Int16Array(audio.length);
+                for (let i = 0; i < audio.length; i++) {
+                    // Convert float to int16
+                    const s = Math.max(-1, Math.min(1, audio[i]));
+                    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                // Create the WAV file
+                const buffer = new ArrayBuffer(44 + int16Array.length * 2);
+                const view = new DataView(buffer);
+
+                // RIFF header
+                writeString(view, 0, 'RIFF');
+                view.setUint32(4, 36 + int16Array.length * 2, true);
+                writeString(view, 8, 'WAVE');
+
+                // fmt chunk
+                writeString(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true); // PCM format
+                view.setUint16(22, numChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true);
+                view.setUint16(32, numChannels * bitsPerSample / 8, true);
+                view.setUint16(34, bitsPerSample, true);
+
+                // data chunk
+                writeString(view, 36, 'data');
+                view.setUint32(40, int16Array.length * 2, true);
+
+                // Write the PCM samples
+                const offset = 44;
+                for (let i = 0; i < int16Array.length; i++) {
+                    view.setInt16(offset + i * 2, int16Array[i], true);
+                }
+
+                return new Blob([buffer], { type: 'audio/wav' });
+            }
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+
+            startButton.addEventListener('click', async () => {
+                startButton.classList.add('hidden');
+                stopButton.classList.remove('hidden');
+                updateStatus('Initializing voice detection...');
+
+                if (await initVAD()) {
+                    vadInstance.start();
+                    updateStatus('Listening for speech...');
+                } else {
+                    startButton.classList.remove('hidden');
+                    stopButton.classList.add('hidden');
+                }
+            });
+
+            stopButton.addEventListener('click', () => {
+                if (vadInstance) {
+                    vadInstance.destroy();
+                    vadInstance = null;
+                }
+                stopButton.classList.add('hidden');
+                startButton.classList.remove('hidden');
+                updateStatus('Voice detection stopped');
+            });
+
+            // Auto-start camera if permissions are already granted
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    stream.getTracks().forEach(track => track.stop());
+                    startCameraBtn.click();
+                })
+                .catch(err => {
+                    console.log("Camera requires manual activation", err);
+                });
+        });
+    </script>
 </body>
 </html>

@@ -10,14 +10,3 @@ flask-socketio
 groq
 python-dotenv
 Pillow==10.0.0
-email_validator
-flask
-flask-sqlalchemy
-gunicorn
-psycopg2-binary
-numpy
-opencv-python
-pyaudio
-requests
-websocket
-websocket-client
