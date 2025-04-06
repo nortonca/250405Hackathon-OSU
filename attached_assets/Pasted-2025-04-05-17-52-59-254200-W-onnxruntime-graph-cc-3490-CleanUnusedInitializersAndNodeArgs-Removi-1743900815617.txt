@@ -1,0 +1,35 @@
+2025-04-05 17:52:59.254200 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '623'. It is not used by any node and should be removed from the model.
+2025-04-05 17:52:59.254300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '629'. It is not used by any node and should be removed from the model.
+2025-04-05 17:52:59.254300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '620'. It is not used by any node and should be removed from the model.
+[VAD] vad is initialized
+Speech start detected
+Speech ended, processing in pipeline
+Error in audio processing: 
+ReferenceError {}
+message: "AudioProcessor is not defined"
+stack: "ReferenceError: AudioProcessor is not defined↵ at Object.onSpeechEnd (https://686a1096-fc02-48bc-9fcf-5876e0c25eae-00-2rlgblluocg5o.picard.replit.dev/:246:48)↵ at f.handleFrameProcessorEvent (https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js:1:14375)↵ at f.processFrame (https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js:1:14071)↵ at async audioNode.port.onmessage (https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js:1:15257)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
+
+[VAD] initializing vad
+2025-04-05 17:53:05.730800 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '140'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731000 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '131'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731000 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '139'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731100 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '136'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731200 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '134'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '628'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '625'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731400 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '623'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731400 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '629'. It is not used by any node and should be removed from the model.
+2025-04-05 17:53:05.731400 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '620'. It is not used by any node and should be removed from the model.
+[VAD] vad is initialized
+Speech start detected
+Speech ended, processing in pipeline
+Error in audio processing: 
+ReferenceError {}
+message: "AudioProcessor is not defined"
+stack: "ReferenceError: AudioProcessor is not defined↵ at Object.onSpeechEnd (https://686a1096-fc02-48bc-9fcf-5876e0c25eae-00-2rlgblluocg5o.picard.replit.dev/:246:48)↵ at f.handleFrameProcessorEvent (https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js:1:14375)↵ at f.processFrame (https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js:1:14071)↵ at async audioNode.port.onmessage (https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.22/dist/bundle.min.js:1:15257)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
