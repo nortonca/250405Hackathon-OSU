@@ -147,7 +147,7 @@ const AudioProcessor = {
             formData.append('image_data', imageData);
         }
 
-        // Add conversation history if available
+        // Always send conversation history for context
         if (conversationHistory && conversationHistory.length > 0) {
             formData.append('conversation_history', JSON.stringify(conversationHistory));
         }

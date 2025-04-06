@@ -38,20 +38,19 @@ def transcribe():
         # 2. Send transcription to client
         socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
 
-        # 3. Get conversation history from client if available (Not used in this version)
+        # 3. Get conversation history from client if available
         conversation_history = []
-        #if 'conversation_history' in request.form:
-        #    try:
-        #        conversation_history = json.loads(request.form.get('conversation_history'))
-        #    except Exception as e:
-        #        print(f"Error parsing conversation history: {str(e)}")
-
+        if 'conversation_history' in request.form:
+            try:
+                conversation_history = json.loads(request.form.get('conversation_history'))
+            except Exception as e:
+                print(f"Error parsing conversation history: {str(e)}")
 
         # 4. Process with vision model. Error if no image.
         has_image = request.form.get('has_image') == 'true'
         if has_image and 'image_data' in request.form:
             image_data = request.form.get('image_data')
-            ai_response = get_vision_response(transcript, image_data)
+            ai_response = get_vision_response(transcript, image_data, conversation_history)
         else:
             return jsonify({'error':'Image data required for processing'}), 400
 
