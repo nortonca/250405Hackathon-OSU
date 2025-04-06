@@ -222,14 +222,11 @@
                                     imageData = localStorage.getItem(currentImageKey);
                                 }
 
-                                // Check if AudioProcessor exists before using it
-                                if (typeof AudioProcessor === 'undefined') {
-                                    console.error("AudioProcessor is not defined. Make sure main.js is loaded correctly.");
-                                    updateStatus('Error: Audio processing is not available', true);
-                                    return;
-                                }
+                                // Get recent images for context
+                                const recentImages = window.ImageProcessor ? window.ImageProcessor.getRecentImages() : [];
+                                console.log(`Found ${recentImages ? recentImages.length : 0} recent images for context`);
 
-                                // Process audio with conversation history
+                                // Process audio with conversation historyy
                                 const result = await AudioProcessor.processPipeline(audio, imageData, conversationHistory);
 
                                 // Update local conversation history with the new exchange

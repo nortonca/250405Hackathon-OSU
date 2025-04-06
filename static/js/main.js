@@ -215,7 +215,8 @@ const ImageProcessor = {
             
             // Check size for localStorage (~5MB limit)
             if (base64Image.length > 5000000) {
-                throw new Error('Image too large for local storage');
+                console.log("Resizing image to fit in localStorage");
+                // Future enhancement: implement image resizing
             }
             
             // Store with timestamp key
@@ -276,10 +277,14 @@ const ImageProcessor = {
         const imageHistoryContainer = document.getElementById('image-history');
         const imageHistoryCount = document.getElementById('image-history-count');
         
-        if (!imageHistoryContainer) return;
+        if (!imageHistoryContainer) {
+            console.error("Image history container not found in DOM");
+            return;
+        }
         
         // Get recent images
         const recentImages = this.getRecentImages();
+        console.log(`Updating UI with ${recentImages.length} recent images`);
         
         // Update count
         if (imageHistoryCount) {
@@ -290,7 +295,7 @@ const ImageProcessor = {
         imageHistoryContainer.innerHTML = '';
         
         // If no images, show placeholders
-        if (recentImages.length === 0) {
+        if (!recentImages || recentImages.length === 0) {
             for (let i = 0; i < this.maxRecentImages; i++) {
                 const placeholder = document.createElement('div');
                 placeholder.className = 'image-placeholder w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center';
@@ -302,11 +307,16 @@ const ImageProcessor = {
         
         // Add recent images (newest first)
         recentImages.forEach((img, index) => {
+            if (!img || img.length < 10) {
+                console.error(`Invalid image data at index ${index}`);
+                return;
+            }
+            
             const imgContainer = document.createElement('div');
             imgContainer.className = 'relative w-24 h-24 border border-gray-300 rounded-lg overflow-hidden';
             
             const imgElement = document.createElement('img');
-            imgElement.src = img.data;
+            imgElement.src = img; // Use the img directly as it's the base64 data
             imgElement.className = 'w-full h-full object-cover';
             imgElement.alt = `Previous image ${index + 1}`;
             

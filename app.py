@@ -60,12 +60,21 @@ def transcribe():
                 try:
                     image_history = json.loads(request.form.get('image_history'))
                     print(f"Received {len(image_history)} images in history")
+                    
+                    # Validate image history data
+                    valid_history = []
+                    for img in image_history:
+                        if img and isinstance(img, str) and len(img) > 100:  # Basic validation
+                            valid_history.append(img)
+                    
+                    image_history = valid_history
+                    print(f"Valid images in history: {len(image_history)}")
                 except Exception as e:
                     print(f"Error parsing image history: {str(e)}")
 
             # Only use most recent 3 images in history to avoid overwhelming context
             if image_history and len(image_history) > 3:
-                image_history = image_history[:3]
+                image_history = image_history[-3:]  # Use the 3 most recent images
 
             # Use vision response with image context
             ai_response = get_vision_response(transcript, image_data, image_history)
