@@ -1,4 +1,3 @@
-
 // Camera Management Utilities
 const CameraManager = {
     videoElement: null,
@@ -7,7 +6,7 @@ const CameraManager = {
     canvas: null,
     context: null,
     isActive: false,
-    
+
     // Initialize camera manager
     init: function(videoElementId, canvasElementId) {
         this.videoElement = document.getElementById(videoElementId);
@@ -15,7 +14,7 @@ const CameraManager = {
         this.context = this.canvas.getContext('2d');
         this.capturedFrame = null;
     },
-    
+
     // Start camera stream
     startCamera: async function() {
         try {
@@ -27,7 +26,7 @@ const CameraManager = {
                 }, 
                 audio: false 
             });
-            
+
             this.videoElement.srcObject = this.stream;
             this.isActive = true;
             return true;
@@ -36,7 +35,7 @@ const CameraManager = {
             return false;
         }
     },
-    
+
     // Stop camera stream
     stopCamera: function() {
         if (this.stream) {
@@ -45,33 +44,33 @@ const CameraManager = {
             this.isActive = false;
         }
     },
-    
+
     // Capture current frame
     captureFrame: function() {
         if (!this.isActive || !this.videoElement) return null;
-        
+
         // Set canvas size to match video dimensions
         const width = this.videoElement.videoWidth;
         const height = this.videoElement.videoHeight;
-        
+
         if (width && height) {
             this.canvas.width = width;
             this.canvas.height = height;
             this.context.drawImage(this.videoElement, 0, 0, width, height);
-            
+
             // Get base64 representation of the image
             const capturedImage = this.canvas.toDataURL('image/jpeg');
             this.capturedFrame = capturedImage;
-            
+
             // Make the canvas container visible
             document.getElementById('captured-frame-container').classList.remove('hidden');
-            
+
             return capturedImage;
         }
-        
+
         return null;
     },
-    
+
     // Get the last captured frame
     getLastFrame: function() {
         return this.capturedFrame;
@@ -84,29 +83,29 @@ const AudioProcessor = {
     float32ToWav: function(audioData, sampleRate = 16000) {
         const numChannels = 1;
         const bitsPerSample = 16;
-        
+
         // Convert Float32Array to Int16Array
         const int16Array = new Int16Array(audioData.length);
         for (let i = 0; i < audioData.length; i++) {
             const s = Math.max(-1, Math.min(1, audioData[i]));
             int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
-        
+
         // Create WAV file
         const buffer = new ArrayBuffer(44 + int16Array.length * 2);
         const view = new DataView(buffer);
-        
+
         const writeString = (view, offset, string) => {
             for (let i = 0; i < string.length; i++) {
                 view.setUint8(offset + i, string.charCodeAt(i));
             }
         };
-        
+
         // Write WAV header
         writeString(view, 0, 'RIFF');
         view.setUint32(4, 36 + int16Array.length * 2, true);
         writeString(view, 8, 'WAVE');
-        
+
         writeString(view, 12, 'fmt ');
         view.setUint32(16, 16, true);
         view.setUint16(20, 1, true);
@@ -115,54 +114,54 @@ const AudioProcessor = {
         view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true);
         view.setUint16(32, numChannels * bitsPerSample / 8, true);
         view.setUint16(34, bitsPerSample, true);
-        
+
         writeString(view, 36, 'data');
         view.setUint32(40, int16Array.length * 2, true);
-        
+
         // Write PCM samples
         const offset = 44;
         for (let i = 0; i < int16Array.length; i++) {
             view.setInt16(offset + i * 2, int16Array[i], true);
         }
-        
+
         return new Blob([buffer], { type: 'audio/wav' });
     },
-    
+
     // Process audio pipeline
     processPipeline: async function(audioData, imageData = null, conversationHistory = []) {
         // Convert audio to WAV
         const wavBlob = this.float32ToWav(audioData);
-        
+
         // Create form data
         const formData = new FormData();
         formData.append('audio', wavBlob, 'speech.wav');
-        
+
         // If camera is active, get the captured frame
         if (CameraManager.isActive) {
             imageData = CameraManager.getLastFrame();
         }
-        
+
         // Add image if available
         if (imageData) {
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
         }
-        
+
         // Add conversation history if available
         if (conversationHistory && conversationHistory.length > 0) {
             formData.append('conversation_history', JSON.stringify(conversationHistory));
         }
-        
+
         // Send to server
         const response = await fetch('/transcribe', {
             method: 'POST',
             body: formData
         });
-        
+
         if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
         }
-        
+
         return await response.json();
     }
 };
@@ -178,22 +177,22 @@ const ImageProcessor = {
             reader.readAsDataURL(file);
         });
     },
-    
+
     // Store image locally
     storeImage: async function(imageFile, prefix = 'voice-assistant-image-') {
         try {
             const base64Image = await this.fileToBase64(imageFile);
-            
+
             // Check size for localStorage (~5MB limit)
             if (base64Image.length > 5000000) {
                 throw new Error('Image too large for local storage');
             }
-            
+
             // Store with timestamp key
             const imageKey = prefix + Date.now();
             localStorage.setItem(imageKey, base64Image);
             localStorage.setItem('current-image-key', imageKey);
-            
+
             return {
                 success: true,
                 key: imageKey,

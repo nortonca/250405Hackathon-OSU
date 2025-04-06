@@ -43,15 +43,16 @@
                             <video id="camera-feed" autoplay playsinline class="w-full rounded-lg"></video>
                             <div id="camera-status" class="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded-full opacity-75">Camera inactive</div>
                         </div>
-                        
+
                         <!-- Camera controls -->
                         <div class="flex mt-2 space-x-2">
                             <button id="start-camera" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                                Start Camera
+                                Start Camera (Required)
                             </button>
                             <button id="stop-camera" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm hidden">
                                 Stop Camera
                             </button>
+                            <p class="text-sm text-gray-600 mt-1">Camera must be enabled for vision processing</p>
                         </div>
                     </div>
 
@@ -77,7 +78,7 @@
 
     <!-- Main JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Socket.IO for real-time communication
@@ -117,15 +118,15 @@
             const cameraFeed = document.getElementById('camera-feed');
             const capturedFrame = document.getElementById('captured-frame');
             const cameraStatus = document.getElementById('camera-status');
-            
+
             // Initialize camera manager
             CameraManager.init('camera-feed', 'captured-frame');
-            
+
             function updateStatus(message, isError = false) {
                 statusDiv.textContent = message;
                 statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
             }
-            
+
             function updateCameraStatus(message) {
                 cameraStatus.textContent = message;
             }
@@ -159,7 +160,7 @@
                     updateStatus('Failed to start camera. Please check permissions.', true);
                 }
             });
-            
+
             stopCameraBtn.addEventListener('click', function() {
                 CameraManager.stopCamera();
                 stopCameraBtn.classList.add('hidden');
@@ -176,7 +177,7 @@
                             updateStatus('Speech detected! Recording...');
                             console.log("Speech start detected");
                             isRecording = true;
-                            
+
                             // Capture camera frame if camera is active
                             if (CameraManager.isActive) {
                                 CameraManager.captureFrame();
