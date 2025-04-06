@@ -137,6 +137,13 @@ const AudioProcessor = {
         const formData = new FormData();
         formData.append('audio', wavBlob, 'speech.wav');
         
+        // Update UI to show if we're using image context
+        const imageContextBadge = document.getElementById('image-context-badge');
+        if (imageContextBadge) {
+            const hasImageContext = imageData || (ImageProcessor.getRecentImages().length > 0);
+            imageContextBadge.classList.toggle('hidden', !hasImageContext);
+        }
+        
         // If camera is active, get the captured frame
         if (CameraManager.isActive) {
             imageData = CameraManager.getLastFrame();
@@ -224,6 +231,9 @@ const ImageProcessor = {
             // Update the recent keys in storage
             localStorage.setItem('recent-image-keys', JSON.stringify(recentImageKeys));
             
+            // Update UI to reflect image history
+            this.updateImageHistoryUI();
+            
             return {
                 success: true,
                 key: imageKey,
@@ -247,6 +257,64 @@ const ImageProcessor = {
                 data: localStorage.getItem(key)
             };
         }).filter(img => img.data !== null); // Filter out any null images
+    },
+    
+    // Update the UI to display image history
+    updateImageHistoryUI: function() {
+        const imageHistoryContainer = document.getElementById('image-history');
+        const imageHistoryCount = document.getElementById('image-history-count');
+        
+        if (!imageHistoryContainer) return;
+        
+        // Get recent images
+        const recentImages = this.getRecentImages();
+        
+        // Update count
+        if (imageHistoryCount) {
+            imageHistoryCount.textContent = recentImages.length;
+        }
+        
+        // Clear current history display
+        imageHistoryContainer.innerHTML = '';
+        
+        // If no images, show placeholders
+        if (recentImages.length === 0) {
+            for (let i = 0; i < this.maxRecentImages; i++) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'image-placeholder w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center';
+                placeholder.innerHTML = '<span class="text-gray-400 text-xs">Empty</span>';
+                imageHistoryContainer.appendChild(placeholder);
+            }
+            return;
+        }
+        
+        // Add recent images (newest first)
+        recentImages.forEach((img, index) => {
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'relative w-24 h-24 border border-gray-300 rounded-lg overflow-hidden';
+            
+            const imgElement = document.createElement('img');
+            imgElement.src = img.data;
+            imgElement.className = 'w-full h-full object-cover';
+            imgElement.alt = `Previous image ${index + 1}`;
+            
+            // Add index badge
+            const indexBadge = document.createElement('div');
+            indexBadge.className = 'absolute top-1 right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center';
+            indexBadge.textContent = index + 1;
+            
+            imgContainer.appendChild(imgElement);
+            imgContainer.appendChild(indexBadge);
+            imageHistoryContainer.appendChild(imgContainer);
+        });
+        
+        // Add empty placeholders if less than max
+        for (let i = recentImages.length; i < this.maxRecentImages; i++) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'image-placeholder w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center';
+            placeholder.innerHTML = '<span class="text-gray-400 text-xs">Empty</span>';
+            imageHistoryContainer.appendChild(placeholder);
+        }
     }
 };
 
@@ -263,6 +331,12 @@ if (typeof ImageProcessor === 'undefined') {
     console.log("Creating global ImageProcessor");
     globalThis.ImageProcessor = ImageProcessor;
 }
+
+// Initialize UI elements on load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize image history UI
+    ImageProcessor.updateImageHistoryUI();
+});
 
 // Log to confirm the script loaded
 console.log("Audio and Image Processing utilities loaded");
