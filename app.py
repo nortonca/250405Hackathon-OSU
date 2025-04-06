@@ -49,11 +49,23 @@ def transcribe():
         
         # 4. Process with appropriate model
         has_image = request.form.get('has_image') == 'true'
+        has_image_history = request.form.get('has_image_history') == 'true'
         
         if has_image and 'image_data' in request.form:
-            # Vision model path with client-provided image
+            # Get current image
             image_data = request.form.get('image_data')
-            ai_response = get_vision_response(transcript, image_data)
+            
+            # Get image history if available
+            image_history = []
+            if has_image_history and 'image_history' in request.form:
+                try:
+                    image_history = json.loads(request.form.get('image_history'))
+                    print(f"Received {len(image_history)} images in history")
+                except Exception as e:
+                    print(f"Error parsing image history: {str(e)}")
+            
+            # Use vision response with image context
+            ai_response = get_vision_response(transcript, image_data, image_history)
         else:
             # Regular text-only conversation with Llama and client-provided history
             ai_response = get_llama_response(transcript, conversation_history)

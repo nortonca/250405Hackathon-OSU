@@ -142,10 +142,17 @@ const AudioProcessor = {
             imageData = CameraManager.getLastFrame();
         }
         
-        // Add image if available
+        // Add current image if available
         if (imageData) {
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
+        }
+        
+        // Add recent images history
+        const recentImages = ImageProcessor.getRecentImages();
+        if (recentImages && recentImages.length > 0) {
+            formData.append('has_image_history', 'true');
+            formData.append('image_history', JSON.stringify(recentImages));
         }
         
         // Add conversation history if available
@@ -169,6 +176,9 @@ const AudioProcessor = {
 
 // Image processing utilities
 const ImageProcessor = {
+    // Maximum number of recent images to track
+    maxRecentImages: 3,
+    
     // Convert image file to base64
     fileToBase64: function(file) {
         return new Promise((resolve, reject) => {
@@ -179,7 +189,7 @@ const ImageProcessor = {
         });
     },
     
-    // Store image locally
+    // Store image locally and manage image history
     storeImage: async function(imageFile, prefix = 'voice-assistant-image-') {
         try {
             const base64Image = await this.fileToBase64(imageFile);
@@ -192,7 +202,27 @@ const ImageProcessor = {
             // Store with timestamp key
             const imageKey = prefix + Date.now();
             localStorage.setItem(imageKey, base64Image);
+            
+            // Update current image key
             localStorage.setItem('current-image-key', imageKey);
+            
+            // Maintain a list of recent image keys (max 3)
+            let recentImageKeys = JSON.parse(localStorage.getItem('recent-image-keys') || '[]');
+            recentImageKeys.unshift(imageKey); // Add newest to the beginning
+            
+            // Keep only the most recent ones
+            if (recentImageKeys.length > this.maxRecentImages) {
+                // Get keys to remove
+                const keysToRemove = recentImageKeys.splice(this.maxRecentImages);
+                
+                // Remove old images from storage
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                });
+            }
+            
+            // Update the recent keys in storage
+            localStorage.setItem('recent-image-keys', JSON.stringify(recentImageKeys));
             
             return {
                 success: true,
@@ -206,6 +236,17 @@ const ImageProcessor = {
                 error: error.message
             };
         }
+    },
+    
+    // Get all recent images
+    getRecentImages: function() {
+        const recentKeys = JSON.parse(localStorage.getItem('recent-image-keys') || '[]');
+        return recentKeys.map(key => {
+            return {
+                key: key,
+                data: localStorage.getItem(key)
+            };
+        }).filter(img => img.data !== null); // Filter out any null images
     }
 };
 
