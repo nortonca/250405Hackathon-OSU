@@ -29,15 +29,12 @@ def get_vision_response(transcription, image_data):
     else:
         base64_image = image_data
 
-    # Create a conversation for the vision model with proper system message
+    # Create a conversation for the vision model (without system message as it's not supported with images)
     vision_messages = [
-        {
-            "role": "system",
-            "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."
-        },
         {
             "role": "user", 
             "content": [
+                {"type": "text", "text": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange.\n\n" + transcription},
                 {"type": "text", "text": transcription},
                 {
                     "type": "image_url",
