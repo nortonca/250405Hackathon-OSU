@@ -10,18 +10,18 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Define the system message for consistency
+# Define the system message for Lumi
 LUMI_SYSTEM_MESSAGE = "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You're conversational and concise (1-3 sentences), ensuring a warm connection in every exchange."
 
 def get_llama_response(transcription, conversation_history=None):
     """
-    Get a response from the Llama model for text-only queries using provided conversation history
+    Get a response from the Llama model for text-only queries
     
     Args:
         transcription: The user's transcribed speech
         conversation_history: List of conversation messages in the format [{"role": "...", "content": "..."}]
     """
-    # If no history is provided, initialize with our system message
+    # Initialize conversation with system message if needed
     if not conversation_history or not isinstance(conversation_history, list) or len(conversation_history) == 0:
         conversation_history = [
             {"role": "system", "content": LUMI_SYSTEM_MESSAGE}
@@ -31,7 +31,7 @@ def get_llama_response(transcription, conversation_history=None):
     if conversation_history[0]["role"] != "system":
         conversation_history.insert(0, {"role": "system", "content": LUMI_SYSTEM_MESSAGE})
     
-    # Add user message to conversation history if it's not already there
+    # Add user message to conversation history
     if not conversation_history or conversation_history[-1]["role"] != "user" or conversation_history[-1]["content"] != transcription:
         conversation_history.append({"role": "user", "content": transcription})
     

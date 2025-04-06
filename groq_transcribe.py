@@ -12,8 +12,8 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Define the system message for consistency
-LUMI_SYSTEM_MESSAGE = "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You're conversational and concise (1-3 sentences), ensuring a warm connection in every exchange."
+# Import system message from llama module to maintain consistency
+from groq_llama import LUMI_SYSTEM_MESSAGE
 
 def transcribe_audio(file_path):
     """Transcribe audio to text using Groq's API"""
@@ -32,7 +32,7 @@ def get_vision_response(transcription, image_data):
     else:
         base64_image = image_data
 
-    # For vision models, we can't use system messages directly, so we'll include instructions in the user message
+    # For vision models, we can't use system messages directly, so include instructions in user message
     vision_messages = [
         {
             "role": "user", 
@@ -61,7 +61,3 @@ def get_vision_response(transcription, image_data):
 
     # Extract and return vision model response
     return completion.choices[0].message.content
-
-if __name__ == "__main__":
-    audio_path = "example_audio.wav"  # replace with actual audio file
-    transcribe_audio(audio_path)
