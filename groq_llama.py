@@ -10,6 +10,9 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
+# Define the system message for consistency
+LUMI_SYSTEM_MESSAGE = "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You're conversational and concise (1-3 sentences), ensuring a warm connection in every exchange."
+
 def get_llama_response(transcription, conversation_history=None):
     """
     Get a response from the Llama model for text-only queries using provided conversation history
@@ -18,15 +21,15 @@ def get_llama_response(transcription, conversation_history=None):
         transcription: The user's transcribed speech
         conversation_history: List of conversation messages in the format [{"role": "...", "content": "..."}]
     """
-    # If no history is provided, use a default system message
+    # If no history is provided, initialize with our system message
     if not conversation_history or not isinstance(conversation_history, list) or len(conversation_history) == 0:
         conversation_history = [
-            {"role": "system", "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."}
+            {"role": "system", "content": LUMI_SYSTEM_MESSAGE}
         ]
     
     # Make sure there's a system message at the beginning
     if conversation_history[0]["role"] != "system":
-        conversation_history.insert(0, {"role": "system", "content": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange."})
+        conversation_history.insert(0, {"role": "system", "content": LUMI_SYSTEM_MESSAGE})
     
     # Add user message to conversation history if it's not already there
     if not conversation_history or conversation_history[-1]["role"] != "user" or conversation_history[-1]["content"] != transcription:

@@ -1,3 +1,4 @@
+
 import os
 import base64
 from groq import Groq
@@ -11,6 +12,9 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
+# Define the system message for consistency
+LUMI_SYSTEM_MESSAGE = "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You're conversational and concise (1-3 sentences), ensuring a warm connection in every exchange."
+
 def transcribe_audio(file_path):
     """Transcribe audio to text using Groq's API"""
     with open(file_path, "rb") as audio_file:
@@ -22,20 +26,18 @@ def transcribe_audio(file_path):
 
 def get_vision_response(transcription, image_data):
     """Process an image and text query using the vision model"""
-    # The image_data is already in base64 from the client
     # Extract the base64 part if it includes the data URL prefix
     if ',' in image_data:
         base64_image = image_data.split(',', 1)[1]
     else:
         base64_image = image_data
 
-    # Create a conversation for the vision model (without system message as it's not supported with images)
+    # For vision models, we can't use system messages directly, so we'll include instructions in the user message
     vision_messages = [
         {
             "role": "user", 
             "content": [
-                {"type": "text", "text": "You are Lumi, a friendly and supportive assistant with a touch of playful sass. You always see an image and know you're interacting with a human friend—if the image shows a human, that's likely the user talking to you. Keep responses conversational and concise (1–3 sentences), ensuring a warm and genuine connection in every exchange.\n\n" + transcription},
-                {"type": "text", "text": transcription},
+                {"type": "text", "text": f"{LUMI_SYSTEM_MESSAGE}\n\nUser query: {transcription}"},
                 {
                     "type": "image_url",
                     "image_url": {
