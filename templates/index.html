@@ -99,10 +99,33 @@
             socket.on('connect', () => {
                 console.log('Connected to server');
             });
-
+            
+            // Handle new combined update events
+            socket.on('conversation_update', (data) => {
+                // Add user message first
+                if (data.user_message && data.user_message.text) {
+                    addTranscript(data.user_message.text, data.user_message.type);
+                }
+                
+                // Then add AI response
+                if (data.ai_response && data.ai_response.text) {
+                    addTranscript(data.ai_response.text, data.ai_response.type);
+                }
+            });
+            
+            // Handle legacy transcription events for backward compatibility
             socket.on('transcription_result', (data) => {
                 if (data.text) {
                     addTranscript(data.text, data.type);
+                }
+            });
+            
+            // Handle processing status updates
+            socket.on('processing_status', (data) => {
+                if (data.status === 'transcribing') {
+                    updateStatus('Transcribing your speech...');
+                } else if (data.status === 'generating_response') {
+                    updateStatus('Generating AI response...');
                 }
             });
 

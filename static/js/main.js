@@ -128,42 +128,80 @@ const AudioProcessor = {
         return new Blob([buffer], { type: 'audio/wav' });
     },
     
-    // Process audio pipeline
+    // Optimized audio pipeline with improved performance
     processPipeline: async function(audioData, imageData = null, conversationHistory = []) {
-        // Convert audio to WAV
-        const wavBlob = this.float32ToWav(audioData);
+        console.time('processPipeline');
         
-        // Create form data
+        // Convert audio to WAV - this is CPU intensive so we could do it in a web worker in future
+        const wavBlob = this.float32ToWav(audioData);
+        console.timeLog('processPipeline', 'Audio converted to WAV');
+        
+        // Create optimized form data with minimal payload
         const formData = new FormData();
         formData.append('audio', wavBlob, 'speech.wav');
         
-        // If camera is active, get the captured frame
-        if (CameraManager.isActive) {
+        // If camera is active, get the last captured frame to reduce latency
+        // The frame should have been captured at speech start
+        if (!imageData && CameraManager.isActive) {
             imageData = CameraManager.getLastFrame();
         }
         
-        // Add image if available
+        // Add image if available - compress if needed in the future
         if (imageData) {
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
+            console.timeLog('processPipeline', 'Image data appended');
         }
         
-        // Add conversation history if available
+        // Add optimized conversation history if available
         if (conversationHistory && conversationHistory.length > 0) {
-            formData.append('conversation_history', JSON.stringify(conversationHistory));
+            // Compress and limit history to reduce payload size
+            const optimizedHistory = this.optimizeConversationHistory(conversationHistory);
+            formData.append('conversation_history', JSON.stringify(optimizedHistory));
+            console.timeLog('processPipeline', 'Conversation history appended');
         }
         
-        // Send to server
-        const response = await fetch('/transcribe', {
-            method: 'POST',
-            body: formData
-        });
+        // Send to server with fetch priority hint for priority
+        console.timeLog('processPipeline', 'Sending request to server');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
         
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
+        try {
+            const response = await fetch('/transcribe', {
+                method: 'POST',
+                body: formData,
+                signal: controller.signal,
+                priority: 'high' // Browser hint for urgent request
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.timeEnd('processPipeline');
+            return result;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            console.timeEnd('processPipeline');
+            if (error.name === 'AbortError') {
+                throw new Error('Request timed out after 30 seconds');
+            }
+            throw error;
         }
+    },
+    
+    // Helper function to optimize conversation history
+    optimizeConversationHistory: function(history) {
+        if (!history || history.length <= 2) return history;
         
-        return await response.json();
+        // Always keep system prompt and last 6 messages (3 exchanges)
+        const systemPrompt = history.find(msg => msg.role === 'system');
+        const recentMessages = history.filter(msg => msg.role !== 'system').slice(-6);
+        
+        return systemPrompt ? [systemPrompt, ...recentMessages] : recentMessages;
     }
 };
 
