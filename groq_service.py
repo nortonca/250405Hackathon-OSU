@@ -150,12 +150,8 @@ def get_ai_response(transcription, image_data=None, conversation_history=None):
     # Use smaller model for text-only queries, larger for multimodal
     has_image = bool(image_data)
     
-    # Optimize model selection based on query type
-    if has_image:
-        model = "meta-llama/llama-4-scout-17b-16e-instruct"  # For image processing
-    else:
-        # For text-only, we can use a faster model
-        model = "meta-llama/llama-4-scout-17b-16e-instruct"  # Using the same model for consistency, but could optimize with a smaller model
+    # Use a single model regardless of input type
+    model = "meta-llama/llama-4-scout-17b-16e-instruct"
 
     # Prepare messages with optimized handling
     if has_image:
