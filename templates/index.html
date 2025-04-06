@@ -12,33 +12,74 @@
 <body class="bg-gray-100">
   <div class="container mx-auto py-10">
     <h1 class="text-3xl font-bold text-center mb-6">VAD Debug + Transcription</h1>
-    <div class="flex justify-center gap-4 mb-4">
-      <button id="start" class="bg-blue-600 text-white px-4 py-2 rounded">Start Listening</button>
+    <div class="flex justify-center">
+      <button id="start" class="bg-blue-600 text-white px-4 py-2 rounded mr-2">Start Listening</button>
       <button id="stop" class="bg-red-600 text-white px-4 py-2 rounded">Stop Listening</button>
     </div>
-    <pre class="mt-6 bg-white p-4 rounded shadow text-sm h-64 overflow-y-auto" id="log"></pre>
+    <pre class="mt-6 bg-white p-4 rounded shadow text-sm" id="log"></pre>
+    <audio id="ttsAudio" controls class="mt-4 w-full hidden"></audio>
   </div>
 
   <script>
     const log = document.getElementById('log');
+    const audioElement = document.getElementById('ttsAudio');
     const socket = io();
-    let vadInstance = null;
+
+    socket.on('connect', () => {
+      debug("🔌 Socket.IO connected");
+    });
+
+    socket.on('response', (data) => {
+      debug(`🗣️ You:  ${data.transcript}`);
+      debug(`🤖 AI: ${data.response}`);
+      audioElement.src = "/static/output.mp3";
+      audioElement.classList.remove("hidden");
+      audioElement.play();
+    });
 
     function debug(msg) {
-      const time = new Date().toLocaleTimeString();
-      log.textContent += `[${time}] ${msg}\n`;
+      log.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
       log.scrollTop = log.scrollHeight;
       console.log(msg);
     }
 
-    socket.on('connect', () => {
-      debug('🔌 Socket.IO connected');
-    });
+    let vadInstance = null;
 
-    socket.on('transcription_result', (data) => {
-      const who = data.type === 'assistant' ? '🤖 AI' : '🗣️ You';
-      debug(`${who}: ${data.text}`);
-    });
+    document.getElementById('start').onclick = async () => {
+      debug('Initializing VAD...');
+      vadInstance = await vad.MicVAD.new({
+        onSpeechStart: () => debug('🟢 Speech started'),
+        onSpeechEnd: async (audio) => {
+          debug('🔴 Speech ended');
+          if (!audio || !audio.length) {
+            debug('⚠️ No audio recorded.');
+            return;
+          }
+
+          const wavBlob = await float32ArrayToWav(audio);
+          const formData = new FormData();
+          formData.append('audio', wavBlob, 'speech.wav');
+
+          debug('📤 Sending audio to /transcribe');
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/transcribe', true);
+          xhr.onload = () => debug(`✅ Response from /transcribe: ${xhr.status}`);
+          xhr.onerror = () => debug('❌ Error sending audio');
+          xhr.send(formData);
+        }
+      });
+
+      await vadInstance.start();
+      debug('🎙️ Listening...');
+    };
+
+    document.getElementById('stop').onclick = () => {
+      if (vadInstance) {
+        vadInstance.destroy();
+        vadInstance = null;
+        debug('🛑 Stopped VAD');
+      }
+    };
 
     function float32ArrayToWav(audio) {
       const sampleRate = 16000;
@@ -68,58 +109,12 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
-    function writeString(view, offset, string) {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
+    function writeString(view, offset, str) {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
       }
     }
-
-    document.getElementById('start').onclick = async () => {
-      debug('Initializing VAD...');
-      vadInstance = await vad.MicVAD.new({
-        onSpeechStart: () => {
-          debug('🟢 Speech started');
-        },
-        onSpeechEnd: async (audio) => {
-          debug('🔴 Speech ended');
-          if (!audio || !audio.length) {
-            debug('⚠️ No audio captured');
-            return;
-          }
-
-          const wavBlob = float32ArrayToWav(audio);
-          const formData = new FormData();
-          formData.append('audio', wavBlob, 'speech.wav');
-
-          debug('📤 Sending audio to /transcribe');
-
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', '/transcribe', true);
-          xhr.onload = function () {
-            debug(`✅ Response from /transcribe: ${xhr.status}`);
-          };
-          xhr.onerror = function () {
-            debug('❌ Error sending audio');
-          };
-          xhr.send(formData);
-        },
-        minSpeechFrames: 5,
-        preSpeechPadFrames: 10,
-        redemptionFrames: 20,
-        maxSpeechFrames: 200
-      });
-
-      await vadInstance.start();
-      debug('🎙️ Listening...');
-    };
-
-    document.getElementById('stop').onclick = () => {
-      if (vadInstance) {
-        vadInstance.destroy();
-        vadInstance = null;
-        debug('🛑 Stopped VAD');
-      }
-    };
   </script>
 </body>
 </html>
+

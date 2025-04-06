@@ -1,5 +1,3 @@
-# File: google_llm.py
-
 import os
 import requests
 from dotenv import load_dotenv
@@ -12,17 +10,13 @@ if not GOOGLE_API_KEY:
 
 def call_google_llm(prompt):
     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent"
-    headers = {
-        "Content-Type": "application/json"
-    }
-    params = {
-        "key": GOOGLE_API_KEY
-    }
+    headers = { "Content-Type": "application/json" }
+    params = { "key": GOOGLE_API_KEY }
     data = {
-        "contents": [ {
+        "contents": [{
             "role": "user",
-            "parts": [ { "text": prompt } ]
-        } ]
+            "parts": [{ "text": prompt }]
+        }]
     }
 
     response = requests.post(url, headers=headers, params=params, json=data)
@@ -32,3 +26,4 @@ def call_google_llm(prompt):
 
     json_response = response.json()
     return json_response["candidates"][0]["content"]["parts"][0]["text"]
+
