@@ -1,0 +1,62 @@
+from groq import Groq
+
+client = Groq()
+completion = client.chat.completions.create(
+    model="meta-llama/llama-4-scout-17b-16e-instruct",
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "hi\n"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "${IMAGE_DATA_URL}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "Hi! It seems like you're sharing a logo or a graphic with the text \"CYFIN\" in a futuristic font against a black background. What would you like to talk about or know regarding this? Is there something specific about the CYFIN logo you're curious about, or perhaps you're looking for general information on a topic related to this name?"
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "hi"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "${IMAGE_DATA_URL}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": "It appears you're looking at a dashboard for Lumixc AI, which seems to be a platform for managing and analyzing conversations or interactions, possibly through a chatbot or similar AI tool. Here's a breakdown of what we can see:\n\n## Dashboard Overview\n\n- **Total Time Used:** 3 hours and 20 minutes\n- **Time Remaining:** 5 hours\n- **Total Conversations:** 10\n- **Total Messages:** 58\n- **Average Duration:** 46 seconds\n\n## Weekly Usage\n\n- **Time Usage:** There's a bar graph showing time usage in seconds across the week. Only Wednesday shows activity with 29 seconds used.\n- **Conversations:** Another bar graph shows the distribution of conversations across the week. Wednesday has 2 conversations, and all other days have 0.\n\n## Insights\n\n- The platform seems to be actively used, with a total of 10 conversations and 58 messages.\n- The average conversation duration is less than a minute, suggesting that interactions are relatively brief.\n- Most of the activity is concentrated on Wednesday, with no activity on other days of the week based on the graphs provided.\n\n## Possible Use Cases\n\n- This platform could be used for customer service automation, information dissemination, or even personal project management.\n- The analytics provided could help in optimizing the AI's performance, understanding user engagement, and planning for future updates or interventions.\n\n## Questions\n\n- What is the purpose of the Lumixc AI platform? Is it for customer service, personal use, or something else?\n- How does the AI system engage users? Is it through text, voice, or another method?\n- What are the plans for utilizing the remaining 5 hours of time?\n\nIf you have specific questions about this dashboard, the Lumixc AI platform, or need help interpreting any of the data, feel free to ask!"
+        },
+        {
+            "role": "user",
+            "content": "What's the difference in these edges? "
+        },
+        {
+            "role": "assistant",
+            "content": "The edges in the images you've shared exhibit distinct characteristics. In the first image with \"CYFIN,\" the edges are sharp, clean, and feature a geometric design, giving it a futuristic and sleek appearance.\n\nIn contrast, the second image, which appears to be a screenshot of a dashboard, has softer edges with a more rounded appearance, especially noticeable in the buttons, graphs, and text boxes. This gives the dashboard a more organic and user-friendly look.\n\nThe primary differences include:\n\n1. **Sharpness and Cleanliness:** The \"CYFIN\" logo has crisp, sharp edges, while the dashboard elements have softer, more rounded edges.\n2. **Geometric vs. Organic:** The \"CYFIN\" logo features geometric shapes, whereas the dashboard elements have a more organic and smooth design.\n3. **Purpose:** The sharp edges of the logo might be intended to convey a sense of technology, innovation, or modernity, while the softer edges in the dashboard aim for approachability and ease of use.\n\nThese differences reflect the distinct purposes and audiences of each design. The logo seems to be more about branding and immediate recognition, while the dashboard is focused on functionality and user interaction."
+        }
+    ],
+    temperature=1,
+    max_completion_tokens=250,
+    top_p=1,
+    stream=True,
+    stop=None,
+)
+
+for chunk in completion:
+    print(chunk.choices[0].delta.content or "", end="")
