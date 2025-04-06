@@ -50,7 +50,7 @@ const AudioProcessor = {
     },
     
     // Process audio pipeline
-    processPipeline: async function(audioData, imageData = null) {
+    processPipeline: async function(audioData, imageData = null, conversationHistory = []) {
         // Convert audio to WAV
         const wavBlob = this.float32ToWav(audioData);
         
@@ -62,6 +62,11 @@ const AudioProcessor = {
         if (imageData) {
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
+        }
+        
+        // Add conversation history if available
+        if (conversationHistory && conversationHistory.length > 0) {
+            formData.append('conversation_history', JSON.stringify(conversationHistory));
         }
         
         // Send to server

@@ -31,12 +31,12 @@
                 <button id="stop-button" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition hidden">
                     Stop Listening
                 </button>
-                
+
                 <!-- Image upload section -->
                 <div class="mt-4 p-4 border border-gray-200 rounded-lg">
                     <h3 class="text-lg font-medium mb-2">Upload an Image</h3>
                     <p class="text-sm text-gray-500 mb-3">Upload an image for the AI to analyze</p>
-                    
+
                     <div class="flex items-center justify-center w-full">
                         <label for="image-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                             <div class="flex flex-col items-center justify-center pt-5 pb-6">
@@ -49,7 +49,7 @@
                             <input id="image-upload" type="file" accept="image/*" class="hidden" />
                         </label>
                     </div>
-                    
+
                     <div id="image-preview-container" class="mt-4 hidden">
                         <p class="text-sm font-medium mb-2">Preview:</p>
                         <div class="relative">
@@ -86,11 +86,17 @@
             const imagePreviewContainer = document.getElementById('image-preview-container');
             const imagePreview = document.getElementById('image-preview');
             const removeImageButton = document.getElementById('remove-image');
-            
+            const dropZone = document.querySelector('label[for="image-upload"]');
+
             let vadInstance = null;
             let audioChunks = [];
             let isRecording = false;
             let currentImageFile = null;
+
+            // Add conversation history tracking
+            let conversationHistory = [
+                {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
+            ];
 
             // Handle connection events
             socket.on('connect', () => {
@@ -102,7 +108,7 @@
                     addTranscript(data.text, data.type);
                 }
             });
-            
+
             socket.on('image_uploaded', (data) => {
                 updateStatus('Image uploaded and ready for analysis');
                 console.log('Image uploaded:', data);
@@ -135,21 +141,21 @@
             imageUpload.addEventListener('change', function() {
                 if (this.files && this.files[0]) {
                     const file = this.files[0];
-                    
+
                     // Check if file is an image
                     if (!file.type.match('image.*')) {
                         updateStatus('Please select an image file', true);
                         return;
                     }
-                    
+
                     // Check file size (max 5MB for client storage)
                     if (file.size > 5 * 1024 * 1024) {
                         updateStatus('Image is too large (max 5MB for client storage)', true);
                         return;
                     }
-                    
+
                     currentImageFile = file;
-                    
+
                     // Show preview
                     const reader = new FileReader();
                     reader.onload = function(e) {
@@ -157,25 +163,25 @@
                         imagePreviewContainer.classList.remove('hidden');
                     }
                     reader.readAsDataURL(file);
-                    
+
                     // Process image locally instead of uploading
                     handleImageLocally(file);
                 }
             });
-            
+
             // Clear local image when removing it from UI
             removeImageButton.addEventListener('click', function() {
                 imagePreview.src = '';
                 imagePreviewContainer.classList.add('hidden');
                 imageUpload.value = '';
                 currentImageFile = null;
-                
+
                 // Clear current image reference in localStorage
                 localStorage.removeItem('current-image-key');
-                
+
                 updateStatus('Image removed');
             });
-            
+
             // Remove image
             removeImageButton.addEventListener('click', function() {
                 imagePreview.src = '';
@@ -184,11 +190,11 @@
                 currentImageFile = null;
                 updateStatus('Image removed');
             });
-            
+
             // Function to handle image locally without server upload
             function handleImageLocally(imageFile) {
                 updateStatus('Processing image locally...');
-                
+
                 // Convert the image to base64 for local processing
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -198,16 +204,16 @@
                         updateStatus('Image too large for local storage', true);
                         return;
                     }
-                    
+
                     // Store image in localStorage with timestamp as key
                     const imageKey = 'voice-assistant-image-' + Date.now();
                     localStorage.setItem(imageKey, base64Image);
-                    
+
                     // Store current image key for reference when sending voice
                     localStorage.setItem('current-image-key', imageKey);
-                    
+
                     updateStatus('Image stored locally');
-                    
+
                     // Notify socket that we have a local image ready
                     socket.emit('local_image_ready', true);
                 };
@@ -226,9 +232,51 @@
                         onSpeechEnd: async (audio) => {
                             console.log("Speech ended, processing in pipeline");
                             isRecording = false;
-                            
-                            // Use the unified audio processing pipeline
-                            await processAudioPipeline(audio);
+
+                            try {
+                                // Get current image data if available
+                                let imageData = null;
+                                const currentImageKey = localStorage.getItem('current-image-key');
+                                if (currentImageKey) {
+                                    imageData = localStorage.getItem(currentImageKey);
+                                }
+
+                                // Process audio with conversation history
+                                const result = await AudioProcessor.processPipeline(audio, imageData, conversationHistory);
+
+                                // Update local conversation history with the new exchange
+                                if (result.transcript) {
+                                    // Add user message
+                                    conversationHistory.push({
+                                        "role": "user",
+                                        "content": result.transcript
+                                    });
+
+                                    // Add assistant response
+                                    if (result.response) {
+                                        conversationHistory.push({
+                                            "role": "assistant",
+                                            "content": result.response
+                                        });
+                                    }
+
+                                    // Keep conversation history to a reasonable size (last 10 messages)
+                                    if (conversationHistory.length > 11) { // 1 system + 10 messages
+                                        conversationHistory = [
+                                            conversationHistory[0], 
+                                            ...conversationHistory.slice(conversationHistory.length - 10)
+                                        ];
+                                    }
+
+                                    console.log("Updated conversation history:", conversationHistory);
+                                }
+                            } catch (error) {
+                                console.error("Error in audio processing:", error);
+                                updateStatus('Error: ' + error.message, true);
+                            }
+                        },
+                        onVADMisfire: () => {
+                            console.log("VAD misfire (not speech)");
                         }
                     });
                     return true;
@@ -291,56 +339,7 @@
                     view.setUint8(offset + i, string.charCodeAt(i));
                 }
             }
-            
-            // Function to handle the complete audio processing pipeline
-            async function processAudioPipeline(audioData) {
-                updateStatus('Processing audio pipeline...');
-                
-                // 1. Convert audio to WAV format
-                const wavBlob = await float32ArrayToWav(audioData);
-                
-                // 2. Create FormData with all necessary components
-                const formData = new FormData();
-                formData.append('audio', wavBlob, 'speech.wav');
-                
-                // 3. Check if we have an image to include
-                const currentImageKey = localStorage.getItem('current-image-key');
-                let hasImage = false;
-                
-                if (currentImageKey) {
-                    const base64Image = localStorage.getItem(currentImageKey);
-                    if (base64Image) {
-                        formData.append('has_image', 'true');
-                        formData.append('image_data', base64Image);
-                        hasImage = true;
-                    }
-                }
-                
-                // 4. Display user's speech in the transcript area (will be updated with actual text later)
-                addTranscript("Processing your audio...", "user");
-                
-                // 5. Send everything to server in a single request
-                try {
-                    const response = await fetch('/transcribe', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`Server responded with ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // Request was successful, reset status
-                    updateStatus('Ready to detect voice');
-                    
-                    console.log("Audio processing pipeline completed successfully");
-                } catch (error) {
-                    console.error("Error in audio processing pipeline:", error);
-                    updateStatus('Error processing audio', true);
-                }
-            }
+
 
             startButton.addEventListener('click', async () => {
                 startButton.classList.add('hidden');
@@ -365,41 +364,40 @@
                 startButton.classList.remove('hidden');
                 updateStatus('Voice detection stopped');
             });
-            
+
             // Add drag and drop functionality for images
-            const dropZone = document.querySelector('label[for="image-upload"]');
             
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropZone.addEventListener(eventName, preventDefaults, false);
             });
-            
+
             function preventDefaults(e) {
                 e.preventDefault();
                 e.stopPropagation();
             }
-            
+
             ['dragenter', 'dragover'].forEach(eventName => {
                 dropZone.addEventListener(eventName, highlight, false);
             });
-            
+
             ['dragleave', 'drop'].forEach(eventName => {
                 dropZone.addEventListener(eventName, unhighlight, false);
             });
-            
+
             function highlight() {
                 dropZone.classList.add('bg-gray-200');
             }
-            
+
             function unhighlight() {
                 dropZone.classList.remove('bg-gray-200');
             }
-            
+
             dropZone.addEventListener('drop', handleDrop, false);
-            
+
             function handleDrop(e) {
                 const dt = e.dataTransfer;
                 const files = dt.files;
-                
+
                 if (files && files.length) {
                     imageUpload.files = files;
                     // Trigger change event

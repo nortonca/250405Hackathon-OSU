@@ -1,9 +1,11 @@
+
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import os
 import tempfile
 import uuid
 import base64
+import json
 from groq_transcribe import transcribe_audio, get_vision_response
 from groq_llama import get_llama_response
 
@@ -31,14 +33,21 @@ def transcribe():
     audio_file.save(temp_path)
 
     try:
-        # Process everything in a single pipeline
         # 1. Transcribe audio
         transcript = transcribe_audio(temp_path)
         
         # 2. Send transcription to client
         socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
         
-        # 3. Process with appropriate model
+        # 3. Get conversation history from client if available
+        conversation_history = []
+        if 'conversation_history' in request.form:
+            try:
+                conversation_history = json.loads(request.form.get('conversation_history'))
+            except Exception as e:
+                print(f"Error parsing conversation history: {str(e)}")
+        
+        # 4. Process with appropriate model
         has_image = request.form.get('has_image') == 'true'
         
         if has_image and 'image_data' in request.form:
@@ -46,13 +55,13 @@ def transcribe():
             image_data = request.form.get('image_data')
             ai_response = get_vision_response(transcript, image_data)
         else:
-            # Regular text-only conversation with Llama
-            ai_response = get_llama_response(transcript)
+            # Regular text-only conversation with Llama and client-provided history
+            ai_response = get_llama_response(transcript, conversation_history)
         
-        # 4. Send AI response to client
+        # 5. Send AI response to client
         socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
         
-        # 5. Return success to complete the request
+        # 6. Return success to complete the request
         return jsonify({
             'success': True,
             'transcript': transcript,

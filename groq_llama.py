@@ -10,15 +10,27 @@ if not GROQ_API_KEY:
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Keep track of conversation history
-conversation_history = [
-    {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
-]
-
-def get_llama_response(transcription):
-    """Get a response from the Llama model for text-only queries"""
-    # Add user message to conversation history
-    conversation_history.append({"role": "user", "content": transcription})
+def get_llama_response(transcription, conversation_history=None):
+    """
+    Get a response from the Llama model for text-only queries using provided conversation history
+    
+    Args:
+        transcription: The user's transcribed speech
+        conversation_history: List of conversation messages in the format [{"role": "...", "content": "..."}]
+    """
+    # If no history is provided, use a default system message
+    if not conversation_history or not isinstance(conversation_history, list) or len(conversation_history) == 0:
+        conversation_history = [
+            {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."}
+        ]
+    
+    # Make sure there's a system message at the beginning
+    if conversation_history[0]["role"] != "system":
+        conversation_history.insert(0, {"role": "system", "content": "You are a helpful assistant responding to voice transcriptions and image analysis. Keep responses concise and natural."})
+    
+    # Add user message to conversation history if it's not already there
+    if not conversation_history or conversation_history[-1]["role"] != "user" or conversation_history[-1]["content"] != transcription:
+        conversation_history.append({"role": "user", "content": transcription})
     
     # Get response from Groq API
     completion = client.chat.completions.create(
@@ -34,12 +46,4 @@ def get_llama_response(transcription):
     # Extract response text
     response_text = completion.choices[0].message.content
     
-    # Add assistant response to conversation history
-    conversation_history.append({"role": "assistant", "content": response_text})
-    
     return response_text
-
-def clear_conversation_history():
-    """Clear the conversation history except for the system message"""
-    global conversation_history
-    conversation_history = [conversation_history[0]]
