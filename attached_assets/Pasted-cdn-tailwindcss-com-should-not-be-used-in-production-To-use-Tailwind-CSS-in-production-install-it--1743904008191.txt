@@ -1,0 +1,26 @@
+cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+Cannot read properties of null (reading 'appendChild')
+Audio and Image Processing utilities loaded
+Connected to server
+[VAD] initializing vad
+2025-04-05 18:46:19.494300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '140'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.494500 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '131'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.494600 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '139'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.494800 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '136'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.494900 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '134'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.495000 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '628'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.495100 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '625'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.495199 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '623'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.495199 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '629'. It is not used by any node and should be removed from the model.
+2025-04-05 18:46:19.495300 [W:onnxruntime:, graph.cc:3490 CleanUnusedInitializersAndNodeArgs] Removing initializer '620'. It is not used by any node and should be removed from the model.
+[VAD] vad is initialized
+Speech start detected
+Frame captured at speech start
+Speech ended, processing in pipeline
+Error in audio processing: 
+Error {}
+message: "Server error: 500"
+stack: "Error: Server error: 500↵ at Object.processPipeline (https://686a1096-fc02-48bc-9fcf-5876e0c25eae-00-2rlgblluocg5o.picard.replit.dev/static/js/main.js:163:19)↵ at async Object.onSpeechEnd (https://686a1096-fc02-48bc-9fcf-5876e0c25eae-00-2rlgblluocg5o.picard.replit.dev/:207:48)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
