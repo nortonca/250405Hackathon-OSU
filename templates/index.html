@@ -15,7 +15,8 @@
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8">
-            <h1 class="text-3xl font-bold text-center text-blue-600">Real-time Voice Transcription</h1>
+            <h1 class="text-3xl font-bold text-center text-blue-600">Voice AI Assistant</h1>
+            <p class="text-center text-gray-600 mt-2">Speak to interact with the AI assistant in real-time</p>
         </header>
 
         <main class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
@@ -61,7 +62,7 @@
 
             socket.on('transcription_result', (data) => {
                 if (data.text) {
-                    addTranscript(data.text);
+                    addTranscript(data.text, data.type);
                 }
             });
 
@@ -70,14 +71,20 @@
                 statusDiv.className = `mb-4 p-3 rounded-lg text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`;
             }
 
-            function addTranscript(text) {
+            function addTranscript(text, type = 'user') {
                 // Clear the placeholder if it's the first transcript
                 if (transcriptContainer.querySelector('.text-gray-500')) {
                     transcriptContainer.innerHTML = '';
                 }
 
                 const transcriptDiv = document.createElement('div');
-                transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded';
+                if (type === 'user') {
+                    transcriptDiv.className = 'mb-2 p-2 bg-blue-50 rounded self-end';
+                    transcriptDiv.innerHTML = '<span class="font-semibold">You:</span> ' + text;
+                } else {
+                    transcriptDiv.className = 'mb-2 p-2 bg-green-50 rounded self-start';
+                    transcriptDiv.innerHTML = '<span class="font-semibold">AI:</span> ' + text;
+                }ounded';
                 transcriptDiv.textContent = text;
                 transcriptContainer.appendChild(transcriptDiv);
                 transcriptContainer.scrollTop = transcriptContainer.scrollHeight;

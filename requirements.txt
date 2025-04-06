@@ -6,3 +6,6 @@ gunicorn==21.2.0
 groq
 flask-wtf
 uuid
+flask-socketio
+groq
+python-dotenv

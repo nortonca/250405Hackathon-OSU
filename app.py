@@ -4,7 +4,7 @@ from flask_socketio import SocketIO, emit
 import os
 import tempfile
 import uuid
-from groq_transcribe import transcribe_audio
+from groq_transcribe import transcribe_audio, get_ai_response
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key')
@@ -33,8 +33,12 @@ def transcribe():
         # Call the transcription function
         transcript = transcribe_audio(temp_path)
         
-        # Broadcast the result to all connected clients
-        socketio.emit('transcription_result', {'text': transcript})
+        # Broadcast the transcription result to all connected clients
+        socketio.emit('transcription_result', {'text': transcript, 'type': 'user'})
+        
+        # Get AI response and broadcast it
+        ai_response = get_ai_response(transcript)
+        socketio.emit('transcription_result', {'text': ai_response, 'type': 'assistant'})
         
         return jsonify({'success': True}), 200
     except Exception as e:
