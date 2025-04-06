@@ -75,133 +75,6 @@ const CameraManager = {
     // Get the last captured frame
     getLastFrame: function() {
         return this.capturedFrame;
-    },
-    
-    // Clear last captured frame
-    clearCapturedFrame: function() {
-        this.capturedFrame = null;
-        const container = document.getElementById('captured-frame-container');
-        if (container) {
-            container.classList.add('hidden');
-        }
-        if (this.canvas) {
-            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        }
-    }
-};
-
-// Image History Management
-const ImageHistoryManager = {
-    // Maximum number of images to keep in history
-    maxImages: 5,
-    
-    // Get stored image history
-    getHistory: function() {
-        const keys = this.getHistoryKeys();
-        const history = [];
-        
-        for (const key of keys) {
-            const imageData = localStorage.getItem(key);
-            if (imageData) {
-                history.push({
-                    key: key,
-                    data: imageData,
-                    timestamp: parseInt(key.split('-').pop(), 10)
-                });
-            }
-        }
-        
-        return history.sort((a, b) => a.timestamp - b.timestamp);
-    },
-    
-    // Get image history keys from localStorage
-    getHistoryKeys: function() {
-        const keys = [];
-        const prefix = 'voice-assistant-image-';
-        
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(prefix)) {
-                keys.push(key);
-            }
-        }
-        
-        return keys;
-    },
-    
-    // Add image to history
-    addToHistory: function(imageData) {
-        // Create a new key with timestamp
-        const imageKey = 'voice-assistant-image-' + Date.now();
-        localStorage.setItem(imageKey, imageData);
-        localStorage.setItem('current-image-key', imageKey);
-        
-        // Keep history size limited
-        this.pruneHistory();
-        
-        return imageKey;
-    },
-    
-    // Limit the number of stored images
-    pruneHistory: function() {
-        const keys = this.getHistoryKeys();
-        if (keys.length > this.maxImages) {
-            // Sort by timestamp (oldest first)
-            keys.sort((a, b) => {
-                const timeA = parseInt(a.split('-').pop(), 10);
-                const timeB = parseInt(b.split('-').pop(), 10);
-                return timeA - timeB;
-            });
-            
-            // Remove oldest images
-            const toRemove = keys.length - this.maxImages;
-            for (let i = 0; i < toRemove; i++) {
-                localStorage.removeItem(keys[i]);
-            }
-        }
-    },
-    
-    // Clear all image history
-    clearAllHistory: function() {
-        // Remove current image key
-        localStorage.removeItem('current-image-key');
-        
-        // Remove all history images
-        const keys = this.getHistoryKeys();
-        keys.forEach(key => {
-            localStorage.removeItem(key);
-        });
-        
-        // Update UI
-        this.renderInUI('image-history-container');
-    },
-    
-    // Render image history in UI
-    renderInUI: function(containerId) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        const history = this.getHistory();
-        container.innerHTML = '';
-        
-        if (history.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-sm text-center">No image history</p>';
-            return;
-        }
-        
-        // Create history display
-        history.forEach((item, index) => {
-            const thumbnail = document.createElement('div');
-            thumbnail.className = 'image-thumbnail';
-            thumbnail.innerHTML = `
-                <img src="${item.data}" class="w-full h-16 object-cover rounded-md" 
-                     title="Image ${index + 1} from history">
-                <span class="text-xs text-gray-500 text-center block mt-1">
-                    Used for context
-                </span>
-            `;
-            container.appendChild(thumbnail);
-        });
     }
 };
 
@@ -270,29 +143,14 @@ const AudioProcessor = {
         }
         
         // Add image if available
-        let hasImage = false;
         if (imageData) {
-            hasImage = true;
             formData.append('has_image', 'true');
             formData.append('image_data', imageData);
         }
         
         // Add conversation history if available
         if (conversationHistory && conversationHistory.length > 0) {
-            // Ensure image data is properly included in the conversation history
-            const processedHistory = conversationHistory.map(msg => {
-                // Create a copy to avoid modifying the original
-                const msgCopy = {...msg};
-                
-                // For user messages that had images, add the image flag and data
-                if (msgCopy.role === 'user' && msgCopy.hasOwnProperty('image_data')) {
-                    msgCopy.has_image = true;
-                }
-                
-                return msgCopy;
-            });
-            
-            formData.append('conversation_history', JSON.stringify(processedHistory));
+            formData.append('conversation_history', JSON.stringify(conversationHistory));
         }
         
         // Send to server
@@ -331,20 +189,15 @@ const ImageProcessor = {
                 throw new Error('Image too large for local storage');
             }
             
-            // Add to history using the history manager
-            const imageKey = ImageHistoryManager.addToHistory(base64Image);
+            // Store with timestamp key
+            const imageKey = prefix + Date.now();
+            localStorage.setItem(imageKey, base64Image);
+            localStorage.setItem('current-image-key', imageKey);
             
-            // Update UI if the history container exists
-            if (document.getElementById('image-history-container')) {
-                ImageHistoryManager.renderInUI('image-history-container');
-            }
-            
-            // Return information about the stored image
             return {
                 success: true,
                 key: imageKey,
-                data: base64Image,
-                historySize: ImageHistoryManager.getHistory().length
+                data: base64Image
             };
         } catch (error) {
             console.error('Error storing image:', error);
