@@ -158,6 +158,9 @@ def get_ai_response(transcription, image_data=None, conversation_history=None):
         # Extract the base64 part if it includes the data URL prefix - optimize string operations
         base64_image = image_data.split(',', 1)[1] if ',' in image_data else image_data
         
+        # Log truncated image data for debugging
+        logger.debug(f"Processing image data (truncated): {base64_image[:50]}... (length: {len(base64_image)})")
+        
         # Create user message with image and text
         user_message = {
             "role": "user", 

@@ -88,7 +88,12 @@ def transcribe():
         socketio.emit('processing_status', {'status': 'generating_response'})
         has_image = request.form.get('has_image') == 'true'
         image_data = request.form.get('image_data') if has_image and 'image_data' in request.form else None
-        logger.info(f"Processing request - Has image: {has_image}")
+        if has_image and image_data:
+            # Log only truncated version of image data for debugging
+            truncated_data = image_data[:50] + "..." if image_data else "None"
+            logger.info(f"Processing request - Has image: {has_image}, image_data_length: {len(image_data)}, preview: {truncated_data}")
+        else:
+            logger.info(f"Processing request - Has image: {has_image}")
         
         # 4. Get AI response with performance tracking
         logger.debug("Calling Groq API for AI response")
